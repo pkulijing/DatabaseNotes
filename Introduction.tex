@@ -1,0 +1,37 @@
+\ifx\PREAMBLE\undefined
+\input{preamble}
+\begin{document}
+\fi
+\chapter{Introduction and Relational Databases}
+A \textbf{Database Management System(DBMS)} provides an efficient, reliable, convenient and safe multi-user storage of and access to massive amounts of persistent data. 
+\begin{description}
+\item[Massive]Databases handle data at a massive scale. Databases are handling TBs of data, sometimes every day. The size of data managed by a DBMS is much larger than what can fit in the memory of a typical computing system, thus they are designed to handle data that reside out of memory.
+\item[Persistent]Data handled by a DBMS outlives programs that use it. It is not uncommon that multiple programs operate on the same data.
+\item[Safe]DBMS handles data used by critical applications. It has to be guaranteed that the data stays in consistent state in case of hardware failures and software failures.
+\item[Multi-user]\textbf{Concurrency control} mechanism ensures that the data stays consistent when the database is accessed by multi-users. The control occurs at the level of data items rather than the database as a whole, which avoids too much sacrifice of performance.
+\item[Convenient]DBMS makes it easy to make powerful and interesting operations on data. The concept of \textbf{physical data independence} ensures that the way the data is stored and laid out on the disk is independent of the way that programs think of it. Databases are queried by high level query languages that are \textbf{declarative}: user describes what data is needed without specifying the algorithm to get the data, and the system itself will get the data efficiently with appropriate algorithms.
+\item[Efficiency]Databases are supposed to carry out thousands of query/update operations per second. Performance is one of the major concerns of users.
+\item[Reliability]DBMS ought to guarantee 99.99999\% up time for its critical applications. 
+\end{description}
+The following key concepts will be covered in this course:
+\begin{description}
+\item[Data model]A description of how the data is structured. For example, relational database, in which data is thought of as a set of records. Other popular data models include XML, JSON, graph model, etc.
+\item[Schema v.s. data]Their relationship is like the relationship of types and variables in a programing language. Schema is usually set up at the beginning and does not change very often, whereas data can change frequently.
+\item[Data definition language(DDL)]Used to set up the schema.
+\item[Data manipulation language(DML), or query language]Used to query and modify data.
+\end{description}
+A few roles will be involved:
+\begin{itemize}
+\item DBMS implementer
+\item Database designer
+\item Database application developer
+\item Database administrator
+\end{itemize}
+Most of the time we will think of databases from the perspective of designers and developers.
+\section{The Relational Model}
+\textbf{The relation model} is the data model used by all major commercial database systems. It is a simple model that allows query with simple, yet expressive high level languages. There exist efficient implementations of the relational model and the query languages it use. 
+
+In relational model, a database consists of a set of \textbf{relations}, or \textbf{tables}, each of which has a name. Each relation features a set of named \textbf{attributes}, or \textbf{columns}. Typically each attribute has a \textbf{type}, or \textbf{domain}. The domain can be atomic, e.g. integers, doubles, enums, strings, etc, but databases can also support structured types. The actual data is stored in \textbf{tuples}, or \textbf{rows} in the tables. Each tuple has a value for each attribute. The \textbf{schema} is a structural description of relations in database, including the name, the attributes and their types, while the \textbf{instance} is the actual contents of a table at a given time. Typically the schema is set in advance, whereas the instance changes over time. \textbf{NULL} is a special value for unknown or undefined state of any type.
+\ifx\PREAMBLE\undefined
+\end{document}
+\fi
