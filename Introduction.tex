@@ -31,7 +31,21 @@ Most of the time we will think of databases from the perspective of designers an
 \section{The Relational Model}
 \textbf{The relation model} is the data model used by all major commercial database systems. It is a simple model that allows query with simple, yet expressive high level languages. There exist efficient implementations of the relational model and the query languages it use. 
 
-In relational model, a database consists of a set of \textbf{relations}, or \textbf{tables}, each of which has a name. Each relation features a set of named \textbf{attributes}, or \textbf{columns}. Typically each attribute has a \textbf{type}, or \textbf{domain}. The domain can be atomic, e.g. integers, doubles, enums, strings, etc, but databases can also support structured types. The actual data is stored in \textbf{tuples}, or \textbf{rows} in the tables. Each tuple has a value for each attribute. The \textbf{schema} is a structural description of relations in database, including the name, the attributes and their types, while the \textbf{instance} is the actual contents of a table at a given time. Typically the schema is set in advance, whereas the instance changes over time. \textbf{NULL} is a special value for unknown or undefined state of any type.
+In relational model, a database consists of a set of \textbf{relations}, or \textbf{tables}, each of which has a name. Each relation features a set of named \textbf{attributes}, or \textbf{columns}. Typically each attribute has a \textbf{type}, or \textbf{domain}. The domain can be atomic, e.g. integers, doubles, enums, strings, etc, but databases can also support structured types. The actual data is stored in \textbf{tuples}, or \textbf{rows} in the tables. Each tuple has a value for each attribute. \textbf{NULL} is a special value for unknown or undefined state of any type.
+
+The \textbf{schema} is a structural description of relations in database, including the name, the attributes and their types, while the \textbf{instance} is the actual contents of a table at a given time. Typically the schema is set in advance, whereas the instance changes over time. 
+
+A \textbf{key} is an attribute(or a set of attributes) whose value is (or whose combination of values are) unique in each tuple of a relation. Key is used to identify a specific tuple so that a user can find it by asking for its key. Database systems tend to build special index structures or store the database in a particular way so that finding a tuple according to its key is efficient. Moreover, when one relation wants to refer to a tuple in another relation, it has to use its unique key since their is no notion of pointers in relational databases.
+
+Creating tables in SQL is simple:
+\begin{lstlisting}
+Create Table Student(ID, name, GPA, photo);
+
+--Provide types of attributes
+Create Table College (name string, state char(2), enrollment integer);
+\end{lstlisting}
+\section{Querying Relational Databases}
+
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
