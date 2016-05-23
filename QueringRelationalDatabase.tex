@@ -1,0 +1,86 @@
+\ifx\PREAMBLE\undefined
+\input{preamble}
+\begin{document}
+\fi
+\chapter{Querying Relational Database}
+A \textbf{query} on a set of relations produces a relation as result.
+\section{Relational Algebra}
+We will use a simple college admissions database as example. It contains three relations:
+\begin{lstlisting}[escapechar=@]
+College(_cName_, status, enrollment)
+Student(_sID_, sName, GPA, sizeHS@\footnote{sizeHZ means size of the high school the student attended.}@)
+Apply(_sID_, _cName_, _major_, decision)
+\end{lstlisting}
+The key in each relation is underlined.
+
+The simplest query is a relation name. For example, the query
+\begin{center}
+\texttt{Student}
+\end{center}
+will return a copy of the \texttt{Student} relation. In more complex queries, we will use \textbf{operators} to filter, slice and combine relations.
+\subsection{Select Operator}
+The \textbf{Select} operator is used to pick out certain rows. It is written as a $\sigma$ with a subscript being the condition of the selection followed by the relation being queried. For example:
+\begin{itemize}
+\item Students with GPA$>$3.7: $$\mathtt{\sigma_{GPA>3.7}Student}$$
+\item Students with GPA$>$3.7 and sizeHS$<$1000: $$\mathtt{\sigma_{GPA>3.7\:\land\: sizeHS<1000}Student}$$
+\item Applications to Stanford CS major: $$\mathtt{\sigma_{cName='Stanford'\:\land\: major='CS'}Apply}$$
+\end{itemize}
+\subsection{Project Operator}
+The \textbf{Project} operator picks certain columns. It is written as a $\Pi$ with a subscript being the columns to be picked followed by the relation being queried. For example:
+\begin{itemize}
+\item ID and decision of all applications: $$\mathtt{\Pi_{sID, decision}Apply}$$
+\end{itemize}
+If we want to pick both rows and columns, we can simply combine select and project. For example:
+\begin{itemize}
+\item ID and name of students with GPA$>$3.7:$$\mathtt{\Pi_{sID,sName}\left(\sigma_{GPA>3.7}Student\right)}$$
+\end{itemize}
+In relation algebra, duplicates in a query result are always eliminated. It is guaranteed that the same tuple does not appear more than once. This is different from SQL, in which duplicates are not eliminated. The low-level reason is that relational algebra is based on sets while SQL is based on multi-sets.
+\subsection{Cross-product operator}
+The \textbf{Cross-product, a.k.a the Cartesian product} operator combines two relations. The schema of the new relation is the combination of the schemata of the two old relations. If they share the same attribute name, the attribute will be prefixed with the relation name. The number of tuples in the new relation will be the product of the numbers of tuples in the two relations. For example, the cross-product of \texttt{Student} and \texttt{Apply} will have 8 attributes, including \texttt{Student.sID} and \texttt{Apply.sID}. If there are \texttt{s} tuples in \texttt{Student} and \texttt{a} tuples in \texttt{Apply}, there will be \texttt{sa} tuples in \texttt{Student$\times$Apply}.
+
+Cross-product seems not that interesting, but it is useful when combined with other operators. For example:
+\begin{itemize}
+\item Names and GPAs of students with HS$>$1000 who applied to CS and were rejected:
+\begin{equation*}
+\mathtt{\Pi_{sName,GPA}\left(\sigma_{
+\begin{aligned}
+&\mathtt{\scriptstyle Student.sID=Apply.sID\:\land\: sizeHS>1000}\\
+&\mathtt{\scriptstyle\:\land\: major='CS'\:\land\: decision='rejected'}
+\end{aligned}
+}\left(Student\times Apply\right)\right)}
+\end{equation*}
+\end{itemize}
+\subsection{Natural Join Operator}
+The \textbf{Natural Join} operator performs a cross-product, enforces select for equality on all attributes with the same name, and eliminates one copy of duplicate attributes. By convention it is written as $\bowtie$ (pronounced as ``bowtie''). We use the same example to illustrate its use:
+\begin{itemize}
+\item Names and GPAs of students with HS$>$1000 who applied to CS and were rejected:
+\begin{equation*}
+\mathtt{\Pi_{sName,GPA}\left(\sigma_{sizeHS>1000\:\land\:major='CS'\:\land\:decision='rejected'}\left(Student\bowtie Apply\right)\right)}
+\end{equation*}
+\end{itemize}
+Obviously the expression is more elegant and compact. Consider a more complicated example:
+\begin{itemize}
+\item Names and GPAs of students with HS$>$1000 who applied to CS at college with enrollment$>$20000 and were rejected:
+\begin{equation*}
+\mathtt{\Pi_{sName,GPA}\left(\sigma_{
+\begin{aligned}
+&\mathtt{\scriptstyle enrollment>20000\:\land\:sizeHS>1000}\\
+&\mathtt{\scriptstyle\land\:major='CS'\:\land\:decision='rejected'}
+\end{aligned}
+}\left(Student\bowtie Apply\bowtie College\right)\right)}
+\end{equation*}
+\end{itemize}
+Actually all we have to do is to add the \texttt{College} relation in the natural join, and add a select condition for the enrollment.
+
+Note that natural join does not add any expressive power to relational algebra. It can always be substituted with a project composed with a select imposed on the cross-product.
+\subsection{Theta Join Operator}
+The \textbf{Theta Join} operator is equivalent to applying a select on the result of a cross-product. It's written as $\bowtie_{\theta}$, in which $\theta$ is the condition for the select. From the definition we have 
+\begin{equation*}
+\mathtt{Exp_1\bowtie_{\theta}Exp_2 = \sigma_{\theta}(Exp_1\times Exp_2)}
+\end{equation*}
+Like neutral join, theta join does not add any extra expressive power to relational algebra, but rather facilitates the notation. It is implemented as a basic operation in most DBMSs. In the terminology of DB management, the term ``join'' usually means theta join. 
+\subsection{Union Operator}
+\subsection{Difference Operator}
+\ifx\PREAMBLE\undefined
+\end{document}
+\fi

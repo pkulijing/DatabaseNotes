@@ -3,6 +3,7 @@
 \begin{document}
 \fi
 \chapter{Introduction and Relational Databases}
+\section{Introduction to DBMS}
 A \textbf{Database Management System(DBMS)} provides an efficient, reliable, convenient and safe multi-user storage of and access to massive amounts of persistent data. 
 \begin{description}
 \item[Massive]Databases handle data at a massive scale. Databases are handling TBs of data, sometimes every day. The size of data managed by a DBMS is much larger than what can fit in the memory of a typical computing system, thus they are designed to handle data that reside out of memory.
@@ -45,7 +46,37 @@ Create Table Student(ID, name, GPA, photo);
 Create Table College (name string, state char(2), enrollment integer);
 \end{lstlisting}
 \section{Querying Relational Databases}
+General steps in creating and using a relational database:
+\begin{enumerate}
+\item Design the schema and create it using DDL.
+\item ``Bulk load'' initial data into the DB. 
+\item Repeat: execute queries and modifications.
+\end{enumerate}
+Relational DB supports ad-hoc queries in high-level language. A few examples of possible queries:
+\begin{itemize}
+\item All students with GPA$>$3.7 applying to Stanford and MIT only.
+\item All engineering departments in CA with $<$500 applicants.
+\item College with highest average accept rate over last 5 years.
+\end{itemize}
+Some queries are easy to pose while others are difficult. Some are easy for DBMS to execute efficiently while others are harder. Note that the difficulty in posing a query is not correlated with the difficulty in executing it.
 
+All queries return relations, i.e. the language is \textbf{closed}. This nice feature allows pipelining query results: a new query can be run on the result of a previous query.
+
+We are going to cover two kinds of query languages. \textbf{Relational algebra} is a formal language, while \textbf{SQL} is an actual/implemented language. Relational algebra is the foundation of SQL. It helps to define the semantics of SQL. As a taste for both languages, we will write the following query with them:
+\begin{center}
+IDs of students with GPA$>$3.7 applying for Stanford. 
+\end{center}
+In relational algebra, the query is written as
+\begin{equation*}
+\mathtt{\Pi_{ID}\sigma_{GPA>3.7\land cName=``Stanford"}\left(Student\bowtie Apply\right)}
+\end{equation*}
+The same query is written as 
+\begin{lstlisting}
+Select Student.ID
+From Student, Apply
+Where Student.ID=Apply.ID And GPA>3.7 And college=`Stanford' 
+\end{lstlisting}
+in SQL.
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
