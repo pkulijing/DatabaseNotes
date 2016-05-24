@@ -7,7 +7,7 @@ A \textbf{query} on a set of relations produces a relation as result.
 \section{Relational Algebra}
 We will use a simple college admissions database as example. It contains three relations:
 \begin{lstlisting}[escapechar=@]
-College(_cName_, status, enrollment)
+College(_cName_, state, enrollment)
 Student(_sID_, sName, GPA, sizeHS@\footnote{sizeHZ means size of the high school the student attended.}@)
 Apply(_sID_, _cName_, _major_, decision)
 \end{lstlisting}
@@ -35,7 +35,7 @@ If we want to pick both rows and columns, we can simply combine select and proje
 \item ID and name of students with GPA$>$3.7:$$\mathtt{\Pi_{sID,sName}\left(\sigma_{GPA>3.7}Student\right)}$$
 \end{itemize}
 In relation algebra, duplicates in a query result are always eliminated. It is guaranteed that the same tuple does not appear more than once. This is different from SQL, in which duplicates are not eliminated. The low-level reason is that relational algebra is based on sets while SQL is based on multi-sets.
-\subsection{Cross-product operator}
+\subsection{Cross-product Operator}
 The \textbf{Cross-product, a.k.a the Cartesian product} operator combines two relations. The schema of the new relation is the combination of the schemata of the two old relations. If they share the same attribute name, the attribute will be prefixed with the relation name. The number of tuples in the new relation will be the product of the numbers of tuples in the two relations. For example, the cross-product of \texttt{Student} and \texttt{Apply} will have 8 attributes, including \texttt{Student.sID} and \texttt{Apply.sID}. If there are \texttt{s} tuples in \texttt{Student} and \texttt{a} tuples in \texttt{Apply}, there will be \texttt{sa} tuples in \texttt{Student$\times$Apply}.
 
 Cross-product seems not that interesting, but it is useful when combined with other operators. For example:
@@ -80,7 +80,75 @@ The \textbf{Theta Join} operator is equivalent to applying a select on the resul
 \end{equation*}
 Like neutral join, theta join does not add any extra expressive power to relational algebra, but rather facilitates the notation. It is implemented as a basic operation in most DBMSs. In the terminology of DB management, the term ``join'' usually means theta join. 
 \subsection{Union Operator}
+Union does the standard set union in set theory. It is also written as $\cup$, the standard union operator in set theory. For example:
+\begin{itemize}
+\item List of college and student names:
+\begin{equation*}
+\mathtt{\Pi_{cName}College\cup\Pi_{sName}Student}
+\end{equation*}
+\end{itemize}
+Note that this result cannot be obtained from combination of previous operators: college names and student names are listed in one column rather than two different columns. The two expressions on the two sides of the union operator ought to have the same schema, which is not the case here. This will be clarified later.  
 \subsection{Difference Operator}
+The \textbf{Difference} operator is written as the minus sign -. As an example:
+\begin{itemize}
+\item IDs of students who didn't apply anywhere:
+\begin{equation*}
+\mathtt{\Pi_{sID}Student-\Pi_{sID}Apply}
+\end{equation*}
+\item IDs and names of students who didn't apply anywhere:
+\begin{equation*}
+\mathtt{\Pi_{sID,sName}\left(\left(\Pi_{sID}Student-\Pi_{sID}Apply\right)\bowtie Student\right)}
+\end{equation*}
+\end{itemize}
+Note the use of natural join in the second example. This trick is called \textbf{join back}.
+\subsection{Intersection Operator}
+The \textbf{Intersection} operator is written as $\cap$. For example:
+\begin{itemize}
+\item Names that are both a college name and a student name:
+\begin{equation*}
+\mathtt{\Pi_{cName}College\cap\Pi_{sName}Student}
+\end{equation*}
+\end{itemize}
+We face the same problem of schema contradiction as with union operator. Also note that intersection operator does not add expressive power. Actually we have $\mathtt{E_1\cap E_2 \equiv E_1-(E_1-E_2)}$. From another perspective, since two expressions between which the intersection operator is used must have the same schema, we actually have $\mathtt{E_1\cap E_2\equiv E_1\bowtie E_2}$ in this case.
+\subsection{Rename Operator}
+The \textbf{Rename} operator is written as $\mathtt{\rho_{R(A_1,\dots,A_n)}(E)}$, which means assign the schema $\mathtt{R(A_1,\dots,A_n)}$ to the result of \texttt{E}. If only the relation name is to be changed, it can be abbreviated as $\mathtt{\rho_R(E)}$. Similarly, if only the attribute names will be changed, it can be written as $\mathtt{\rho_{A_1,\dots,A_n}(E)}$. For the second abbreviation there has to be a list of attributes, otherwise it cannot be distinguished from the first abbreviation.
+
+Rename operator can be used to unify schemata for the set operators (union, difference and intersection). For example:
+\begin{itemize}
+\item List of college and student names:
+\begin{equation*}
+\mathtt{\rho_{C(name)}\left(\Pi_{cName}College\right)\cup\rho_{C(name)}\left(\Pi_{sName}Student\right)}
+\end{equation*}
+\end{itemize}
+It can also be used for disambiguation in ``self-joins''. For example:
+\begin{itemize}
+\item Pairs of colleges in the same state:
+\begin{equation*}
+\mathtt{\Pi_{n1,n2}\left(\sigma_{s1=s2\:\land\:n1<n2}\left(\rho_{C1(n1,s1,e1)}(College)\times\rho_{C2(n2,s2,e2)}(College)\right)\right)}
+\end{equation*}
+\end{itemize}
+A simpler solution to this problem is:
+\begin{equation}\label{pairsamestate}
+\mathtt{\Pi_{n1,n2}\left(\sigma_{n1<n2}\left(\rho_{C1(n1,s,e1)}(College)\bowtie\rho_{C2(n2,s,e2)}(College)\right)\right)}
+\end{equation} 
+Note that $n1<n2$ is to avoid repetitions of the same pair. $n1\neq n2$ is enough to avoid self-pair, but the same pair will appear twice in reverse order.
+\subsection{Alternative Notations}
+\subsubsection{Assignment Statements}
+Assignment Statements can help modularize expressions. The expression \eqref{pairsamestate} can be rewritten as 
+\begin{align*}
+&\mathtt{C1\coloneqq\rho_{n1,s,e1}(College)}\\
+&\mathtt{C2\coloneqq\rho_{n2,s,e2}(College)}\\
+&\mathtt{CP\coloneqq C1\bowtie C2}\\
+&\mathtt{Ans\coloneqq \Pi_{n1,n2}(\sigma_{n1<n2}CP)}
+\end{align*}
+\subsubsection{Expression Trees}
+Expression trees help visualize the structure of an expression. Suppose we want to get the GPA of students applying to CS in CA, we can write the expression:
+\begin{equation*}
+\mathtt{\Pi_{GPA}(\sigma_{major='CS'\:\land\:state='CA'}(Student\bowtie College\bowtie College))}
+\end{equation*}
+This can be written as a tree with the three relations as leaves, the $\sigma$ as their root and the $\Pi$ as the root of the $\sigma$.
+
+As a summary, relational algebra is a formal language that serves as the foundation of all implemented relational DBMSs. Core operators in relational algebra include relation, select, project, cross product, union, difference and rename. Other operators are useful abbreviations that do not add expressive power: natural join, theta join and intersection. 
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
