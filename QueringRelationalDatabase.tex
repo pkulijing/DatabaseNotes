@@ -3,16 +3,15 @@
 \begin{document}
 \fi
 \chapter{Querying Relational Database}
-A \textbf{query} on a set of relations produces a relation as result.
-\section{Relational Algebra}
-We will use a simple college admissions database as example. It contains three relations:
+A \textbf{query} on a set of relations produces a relation as result. We will use a simple college admissions database as example in this chapter. It contains three relations:
 \begin{lstlisting}[escapechar=@]
 College(_cName_, state, enrollment)
 Student(_sID_, sName, GPA, sizeHS@\footnote{sizeHZ means size of the high school the student attended.}@)
 Apply(_sID_, _cName_, _major_, decision)
 \end{lstlisting}
 The key in each relation is underlined.
-
+\section{Relational Algebra}
+\subsection{Relation Name Query}
 The simplest query is a relation name. For example, the query
 \begin{center}
 \texttt{Student}
@@ -149,6 +148,187 @@ Expression trees help visualize the structure of an expression. Suppose we want 
 This can be written as a tree with the three relations as leaves, the $\sigma$ as their root and the $\Pi$ as the root of the $\sigma$.
 
 As a summary, relational algebra is a formal language that serves as the foundation of all implemented relational DBMSs. Core operators in relational algebra include relation, select, project, cross product, union, difference and rename. Other operators are useful abbreviations that do not add expressive power: natural join, theta join and intersection. 
+\section{SQL}
+\textbf{SQL query language}, based on relational algebra, is supported by all major commercial database systems. It's a standardized language that has been evolving over time with a lot of new features incorporated, while the essence of the language is still relatively simple. It can be used either interactively via GUI or prompt, and it can also be embedded in programs. SQL is a declarative language, which means that user has to describe only what data is needed, not how to get it. The declarative nature of SQL makes the component named \textbf{query optimizer} extremely important. SQL includes two parts:
+\begin{description}
+\item[Data Definition Language(DML)] \texttt{create table, drop table, etc.}
+\item[Data Manipulation Language(DDL)]\texttt{select, insert, delete, update, etc.}
+\end{description}
+\subsection{\texttt{select} Statement}
+The basic \texttt{select} statement has the form
+\begin{lstlisting}
+select A1,A2,...,An
+from R1,R2,...,Rm
+where condition
+\end{lstlisting}
+The \texttt{from} clause specifies the relations to query from, the \texttt{where} clause is used to combine and query the relations, and the \texttt{select} clause sets what to return. It is actually equivalent to the relational algebra expression
+\begin{equation*}
+\mathtt{\Pi_{A1,\dots,An}\sigma_{condition}(R1\times R2\times Rm)}
+\end{equation*}
+The result of a select statement is a relation whose schema is defined by the \texttt{select} clause. 
+
+The attributes used in the condition does not necessarily appear in the result.
+\begin{lstlisting}
+select sID, sName from Student where GPA>3.6;
+\end{lstlisting}
+What is done by the natural join operator in relational algebra has to be specified explicitly in SQL.
+\begin{lstlisting}
+select sName, major 
+from Student, Apply 
+where Student.sID = Apply.sID;
+\end{lstlisting}
+If a few relations share the same attribute, the attribute to which it belong has to be specified to avoid ambiguous error.
+\begin{lstlisting}
+select College.cName --error without College
+from College, Apply 
+where College.cName = Apply.cName and enrollment>20000 and major = 'CS';
+\end{lstlisting}
+\subsubsection{\texttt{distinct} keyword}
+SQL selection result contains duplicate values since it is based on a multi-set model, different from relational algebra which is based on a set model. Nonetheless, duplicate values can be avoided by adding the \texttt{distinct} keyword.
+\begin{lstlisting}
+select distinct sName, major 
+from Student, Apply 
+where Student.sID = Apply.sID;
+\end{lstlisting}
+\subsubsection{\texttt{order by} clause}
+SQL is an unordered model. The same select statement can result in values in different orders when run multiple times. If the result values are supposed to be ordered according to a certain attribute, an \texttt{order by} clause needs to be added. The default behavior is to order in ascending order. If descending order is expected, it needs to be specified explicitly at the end of the clause. If further ordering according to other attributes is expected for rows that have the same value for the attribute specified, they should be listed afterwards in the clause. 
+\begin{lstlisting}
+select Student.sID, sName, GPA, Apply.cName, enrollment
+From Student, College, Apply
+where Student.sID = Apply.sID and College.cName = Apply.cName
+order by GPA desc, enrollment;
+\end{lstlisting}
+\subsubsection{\texttt{like} keyword}
+The \texttt{like} predicate can be used to do string pattern matching for attributes in the \texttt{where} clause.
+\begin{lstlisting}
+select sID, major 
+from Apply
+where major like '%bio%';
+\end{lstlisting} 
+\subsubsection{\texttt{select *}}
+If all attributes in the relations are needed, instead of listing them explicitly, we can use \texttt{select *} that represents selecting all attributes.
+\begin{lstlisting}
+select * 
+from Apply
+where major like '%bio%';
+\end{lstlisting} 
+\subsubsection{\texttt{as} keyword}Arithmetics can be used in SQL clauses. Attribute names can be changed by the \texttt{as} keyword.
+\begin{lstlisting}
+select sID, sName, GPA, GPA*(sizeHS/1000.0) as scaledGPA
+from Student;
+\end{lstlisting}
+\subsubsection{Table Variables}
+Relations used in a select statement can be given another name using table variables. 
+\begin{lstlisting}
+select S.sID, sName, GPA, A.cName, enrollment
+from Student S, Apply A, College C
+where A.sID = S.sID and C.cName = S.cName;
+\end{lstlisting}
+Table variables are especially useful when the same relation is used multiple times in the statement. The following statement selects all pairs of students with the same GPA. 
+\begin{lstlisting}
+select S1.sID, S1.sName, S1.GPA, S2.sID, S2.sName, S2.GPA
+from Student S1, Student S2
+where S1.GPA = S2.GPA and S1.sID < S2.sID;
+\end{lstlisting}
+\subsubsection{Set Operators: \texttt{union, intercept} and \texttt{except}}
+We can use the union operator to get the union of student names and college names.
+\begin{lstlisting}
+select sName as name from Student
+union all
+select cName as name from College
+order by name;
+\end{lstlisting}
+SQL allows the \texttt{union} even without the \texttt{as name}. It will just use \texttt{sName} or \texttt{cName} as the attribute name in the result. The \texttt{all} keyword tells SQL to preserve all duplicate values in the result. By default duplicates are eliminated in the result of \texttt{union}. The \texttt{order by} clause sorts the result as before.
+
+We can use \texttt{intercept} to select students who applied both CS and EE.
+\begin{lstlisting}[escapeinside={@}{@}]
+select sID from Apply where major = 'CS'
+@\color{blue!70}intercept@
+select sID from Apply where major = 'EE';
+\end{lstlisting}
+Some database systems do not support \texttt{intercept}. They don't lose any expressive power because the expression below is equivalent to using \texttt{intercept}:
+\begin{lstlisting}
+select distinct A1.sID
+from Apply A1, Apply A2
+where A1.sID = A2.sID and A1.major = 'CS' and A2.major = 'EE';
+\end{lstlisting}
+
+However this does not go for \texttt{except}. The following expression
+\begin{lstlisting}
+select sID from Apply where major = 'CS'
+except
+select sID from Apply where major = 'EE';
+\end{lstlisting}
+cannot be expressed by the constructs we have introduced up to now. Additional constructs are needed not to lose this expressive power.
+\subsection{Subqueries in Clauses}
+Subqueries are \texttt{select} statements nested inside clauses of another \texttt{select} statement. The following statement select IDs and names of all students who apply for CS.
+\begin{lstlisting}
+select sID, sName
+from Student
+where sID in (select sID from Apply where major = 'CS');
+\end{lstlisting}
+This is actually equivalent to 
+\begin{lstlisting}
+select distinct Student.sID, sName
+from Student, Apply
+where Student.sID = Apply.sID and major = 'CS';
+\end{lstlisting}
+\subsubsection{Extra Expressive Power}
+However, \texttt{distinct} does not always brings such an equivalent. Consider
+\begin{lstlisting}
+select GPA
+from Student
+where sID in (select sID from Apply where major = 'CS');
+\end{lstlisting}
+The version without sub-queries
+\begin{lstlisting}
+select GPA
+from Student, Apply
+where Student.sID = Apply.sID and major = 'CS';
+\end{lstlisting}
+cannot provide the same result, with or without \texttt{distinct}. The reason is that two kinds of duplicates are involved in this examples:
+\begin{itemize}
+\item GPA of the same student applying for CS multiple times at different colleges.
+\item Different students applying for CS who have the same GPA.
+\end{itemize}
+The statement using a sub-query preserves the second kind and eliminates the first one, which is plausible for calculating the average GPA of students who apply for CS. However, the version without sub-query either preserves both kinds (without \texttt{distinct}), or eliminates both(with \texttt{distinct}). This example proves that sub-query does add expressive power to SQL.
+
+Besides facilitating the processing of duplicates, sub-queries also makes it possible to express \texttt{except} without using it. The example of \texttt{except} in the previous section is equivalent to
+\begin{lstlisting}
+select sID 
+from Student
+where sID in (select sID from Apply where major = 'CS')
+  and sID not in (select sID from Apply where major = 'EE');
+\end{lstlisting}
+Note that \texttt{sID not in ...} is equivalent to \texttt{not sID in ...}.
+\subsubsection{\texttt{exists} keyword}
+\begin{lstlisting}
+--Colleges such that some other college is in the same state
+select cName, state
+from College C1
+where exists (select * from College C2 
+              where C2.state = C1.state and C2.cName <> C1.cName);
+--College with the largest enrollment
+select cName
+from College C1
+where not exists (select * from College C2
+	              where C2.enrollment > C1.enrollment);
+\end{lstlisting}
+\subsubsection{\texttt{all} keyword}
+\begin{lstlisting}
+--students with highest GPA
+select sName, GPA
+from Student
+where GPA >= all (select GPA from Student);
+\end{lstlisting}
+\subsubsection{\texttt{any} keyword}
+\begin{lstlisting}
+--students not coming from the smallest high school
+select sID, sName, sizeHS
+from Student
+where sizeHS > any (select sizeHS from Student);
+\end{lstlisting}
+Some database systems do not support \texttt{any} and \texttt{all}. They do not lose expressive power.
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
