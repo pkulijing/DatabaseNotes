@@ -6,7 +6,7 @@
 A \textbf{query} on a set of relations produces a relation as result. We will use a simple college admissions database as example in this chapter. It contains three relations:
 \begin{lstlisting}[escapechar=@]
 College(_cName_, state, enrollment)
-Student(_sID_, sName, GPA, sizeHS@\footnote{sizeHZ means size of the high school the student attended.}@)
+Student(_sID_, sName, GPA, sizeHS@\footnote{sizeHS means size of the high school the student attended.}@)
 Apply(_sID_, _cName_, _major_, decision)
 \end{lstlisting}
 The key in each relation is underlined.
@@ -274,7 +274,7 @@ from Student, Apply
 where Student.sID = Apply.sID and major = 'CS';
 \end{lstlisting}
 \subsubsection{Extra Expressive Power}
-However, \texttt{distinct} does not always brings such an equivalent. Consider
+However, \texttt{distinct} does not always bring such an equivalent. Consider
 \begin{lstlisting}
 select GPA
 from Student
@@ -286,7 +286,7 @@ select GPA
 from Student, Apply
 where Student.sID = Apply.sID and major = 'CS';
 \end{lstlisting}
-cannot provide the same result, with or without \texttt{distinct}. The reason is that two kinds of duplicates are involved in this examples:
+cannot provide the same result, with or without \texttt{distinct}. The reason is that two kinds of duplicates are involved in this example:
 \begin{itemize}
 \item GPA of the same student applying for CS multiple times at different colleges.
 \item Different students applying for CS who have the same GPA.
@@ -312,7 +312,7 @@ where exists (select * from College C2
 select cName
 from College C1
 where not exists (select * from College C2
-	              where C2.enrollment > C1.enrollment);
+                  where C2.enrollment > C1.enrollment);
 \end{lstlisting}
 \subsubsection{\texttt{all} keyword}
 \begin{lstlisting}
@@ -329,6 +329,285 @@ from Student
 where sizeHS > any (select sizeHS from Student);
 \end{lstlisting}
 Some database systems do not support \texttt{any} and \texttt{all}. They do not lose expressive power.
+\subsubsection{Sub-queries in \texttt{select} and \texttt{from} Clauses}
+\begin{lstlisting}
+--students whose GPAs are modified by more that 1.0 after scaling
+select sID, sName, GPA, GPA*sizeHS/1000 as scaledGPA
+from Student
+where GPA*sizeHS/1000 - GPA > 1.0 or GPA - GPA*sizeHS/1000 > 1.0;
+\end{lstlisting}
+The statement above can be simplified as 
+\begin{lstlisting}
+select * 
+from (select sID, sName, GPA, GPA*sizeHS/1000 as scaledGPA
+from Student) G
+where abs(scaledGPA - GPA) > 1.0;
+\end{lstlisting}
+\texttt{abs()} is the built-in absolute value function. By putting a sub-query in the \texttt{from} clause, we are able to avoid calculating the scaled GPA multiple times.
+
+\begin{lstlisting}
+--Pair colleges with their applicants having the highest GPA.
+select distinct College.cName, state, GPA, 
+from College, Apply, Student
+where College.cName = Apply.cName
+  and Apply.sID = Student.sID
+  and GPA >= all
+    (select GPA from Student, Apply
+     where Student.sID = Apply.sID
+       and Apply.cName = College.cName);
+\end{lstlisting}
+The statement above can be rewritten as 
+\begin{lstlisting}
+select cName, state,
+(select distinct GPA
+ from Student, Apply
+ where Student.sID = Apply.sID
+   and College.cName = Apply.cName
+   and GPA > all
+   (select GPA from Student, Apply
+    where Student.sID = Apply.sID
+      and College.cName = Apply.cName)) as GPA
+from College;
+\end{lstlisting}
+with a sub-query in the \texttt{select} clause. In such case it has to be guaranteed that the sub-query returns exactly one value (in this example the highest GPA among applicants for a particular college), because it will be used as an attribute of the returned relation.
+\subsection{\texttt{join} Family of Operators}
+We've been using commas to separate relations in the \texttt{from} clause, which results in cross product of the relations. Actually we can use \texttt{join} operators to gain explicit join of relations, saving the trouble of adding conditions in the \texttt{where} clause. They do not add expressive power to SQL, but can be quite useful for formulating queries, especially the outer join, which is hard to express without the outer join operator itself.
+\subsubsection{Inner Join on Condition}
+\begin{lstlisting}
+select distinct sID, sName, major
+from Student, Apply
+where Student.sID = Apply.sID; --natural join!
+\end{lstlisting}
+The \textbf{inner join on condition} operator is equivalent to the theta join operator in relational algebra. In the statement above, the condition actually results in a natural join of the two tables. This query can be formulated using the inner join on condition.
+\begin{lstlisting}
+select distinct sID, sName, major
+from Student inner join Apply
+on Student.sID = Apply.sID;
+\end{lstlisting}
+\texttt{inner join} is the default join operator in SQL. Thus \texttt{inner} can actually be omitted.
+
+Inner join on condition is actually equivalent to a simple select statement in terms of its meaning. It often serves as a hint for the DBMS to choose the most efficient execution. Conditions concerning the combination of the tables should be put in the \texttt{on} clause. Take the following statement as an example.
+\begin{lstlisting}
+select sName, GPA
+from Student join Apply
+on Student.sID = Apply.sID
+where sizeHS > 1000 and major = 'CS' and cName = 'Stanford';
+\end{lstlisting}
+\subsubsection{Natural Join}
+The first example above can be simplified with a natural join:
+\begin{lstlisting}
+select distinct sID, sName, major
+from Student natural join Apply;
+\end{lstlisting}
+Note that we do not have to prefix \texttt{sID} with a table name in this example, because natural join eliminates duplicate attribute names in the tables automatically.
+\subsubsection{Inner Join using Attributes}
+There might exist attributes with the same name actually meaning different things, which is especially possible when the tables have a lot of attributes. So it is generally considered a better practice than natural join to use \textbf{inner join using attributes}, which explicitly lists the attributes that should be joined, as shown below.
+\begin{lstlisting}
+select distinct sID, sName, major
+from Student join Apply using (sID);
+\end{lstlisting}
+Most SQL implementations do not allow \texttt{using} and \texttt{on} to appear together. Thus conditions that cannot be put in \texttt{using} should be left for the \texttt{where} clause.
+\subsubsection{Outer Join}
+The following statement extract some information about the students and their applications.
+\begin{lstlisting}
+select sID, sName, cName, major
+from Student join Apply using(sID);
+\end{lstlisting}
+There are some students who haven't filed any applications, which is a typical use case for \textbf{outer} join:
+\begin{lstlisting}
+select sID, sName, cName, major
+from Student left outer join Apply using(sID);
+\end{lstlisting}
+Students who haven't filed any applications and thus do not have any related tuples in the \texttt{Apply} table will appear in the result, with \texttt{cName} and \texttt{major} filled with \texttt{null} value for them. When \texttt{left, right} or \texttt{full} appears before a \texttt{join}, the word \texttt{outer} can be omitted. Outer join can also be combined with natural join, returning the same result:
+\begin{lstlisting}
+select sID, sName, cName, major
+from Student natural left join Apply;
+\end{lstlisting}
+Right outer join is obviously the sibling operator of left outer join: tuples that only appear in the table on the right will be present in the returned table. Full outer join provides the union of their results: tuples present only in either table are present. 
+
+An interesting feature of outer joins is that \textbf{none} of the outer joins is \textbf{associative}. We will use full outer join, which in some sense ``seems'' associative at first sight, to illustrate this. 
+
+Consider the three simple tables: A: 
+\begin{tabular}{c|c}
+\hline
+a&b\\\hline
+1&2\\\hline
+\end{tabular}, B: 
+\begin{tabular}{c|c}
+\hline
+b&c\\\hline
+2&3\\\hline
+\end{tabular}, and C: 
+\begin{tabular}{c|c}
+\hline
+a&c\\\hline
+4&5\\\hline
+\end{tabular}. The results of 
+\begin{lstlisting}
+select a,b,c
+from (A natural full join B) natural full join C;
+\end{lstlisting}
+and 
+\begin{lstlisting}
+select a,b,c
+from A natural full join (B natural full join C);
+\end{lstlisting}
+are respectively
+\begin{tabular}{c|c|c}
+\hline
+a&b&c\\\hline
+1&2&3\\\hline
+4&&5\\\hline
+\end{tabular}
+ and 
+\begin{tabular}{c|c|c}
+\hline
+a&b&c\\\hline
+1&2&\\\hline
+4&&5\\\hline
+&2&3\\\hline
+\end{tabular}.
+\subsection{Aggregation}
+\textbf{Aggregation} functions, including \texttt{min, max, sum, avg, count, etc}, appear in the \texttt{select} clause and perform computations over sets of values in multiple rows. They can also cooperate with \texttt{Group by} and \texttt{having} clauses to carry out more complex rules.
+
+A few examples of using aggregation functions:
+\begin{lstlisting}
+--avg GPA of all students who apply for CS
+select avg(GPA)
+from Student
+where sID in (select sID from Apply where major = 'CS');
+--min GPA of all students
+select min(GPA)
+from Student;
+--count of colleges with enrollment larger than 2000
+select count(*)
+from College
+where enrollment > 2000;
+--count of students who apply for Cornell. Will return number of applications for Cornell without distinct 
+select count(distinct sID) 
+from Apply
+where cName = 'Cornell'
+--obscure but self-explaining.
+select * 
+from Student S1
+where (select count(*) from Student S2
+    where S2.sID <> S1.sID and S2.GPA = S1.GPA) =
+where (select count(*) from Student S2
+    where S2.sID <> S1.sID and S2.sizeHS = s1.sizeHS);
+--avgGPA of students applying for CS - avgGPA of other students
+select CS.avgGPA - nonCS.avgGPA 
+from (select avg(GPA) as avgGPA from Student 
+      where sID in (
+         select sID from Apply where major = 'CS')) as CS, 
+     (select avg(GPA) as avgGPA from Student 
+      where sID not in (
+         select sID from Apply where major = 'CS')) as nonCS;
+\end{lstlisting}
+\subsubsection{\texttt{group by} Clause}
+The \texttt{group by} clause calculates the value of aggregation functions for each group of tuples sharing the same value for the specified attributes, rather than for all the tuples.
+\begin{lstlisting}
+--count of applications for each college.
+select cName, count(*)
+from Apply
+group by cName;
+--min and max for each college & major combination
+select cName, major, min(GPA), max(GPA)
+from Apply, Student
+where Apply.sID = Student.sID
+group by cName, major
+--number of colleges applied by each student
+select Student.sID, sName, count(distinct cName)
+from Student, Apply
+where Student.sID = Apply.sID
+group by Student.sID;
+\end{lstlisting}
+Consider the last example above. Students who didn't apply for any college are excluded from the result. If we want them included, we can use the following query:
+\begin{lstlisting}
+select Student.sID, sName, count(distinct cName)
+from Student, Apply
+where Student.sID = Apply.sID
+group by Student.sID
+union
+select sID, sName, 0
+from Student
+where sID not in (select sID from Apply);
+\end{lstlisting}
+\subsubsection{\texttt{having} Clause}
+The \texttt{having} clause is also only used in conjunction with aggregations. It is used after the \texttt{group by} clause to check some condition for each group.
+\begin{lstlisting}
+--colleges with fewer than 5 applicantions.
+select cName
+from Apply
+group by cName
+having count(*) < 5;
+\end{lstlisting}
+\subsection{\texttt{NULL} Values}
+Unless specified explicitly, any attribute can take a special value \texttt{NULL} when it is undefined or unknown. The existence of \texttt{NULL} makes it probable that a presumably tautological condition actually rules out tuples. For example:
+\begin{lstlisting}
+Select sID from Student
+where GPA > 3.5 or GPA <= 3.5;
+\end{lstlisting} 
+Since it is possible that \texttt{GPA = null} for some students, the condition is not exhaustive for all students. Formally speaking, the condition in the \texttt{where} clause is evaluated using a 3-value logic: each expression can be \texttt{true, false} or \texttt{null}.
+\subsection{Data Modification Statements}
+So far we've been discussing query statements. In this section we will introduction SQL statements to modify data, including instructions to insert, delete and update data in the database. 
+\subsubsection{Insert}
+Tuples can be inserted into a table via two kinds of statements:
+\begin{itemize}
+\item Insert a single tuple by specifying its values.
+\begin{lstlisting}
+insert into College values('CMU', 'PA', 11500);
+\end{lstlisting} 
+\item Insert a series of tuples in the result of a select statement.
+\begin{lstlisting}
+--Let all students who haven't applied for any college apply CS in CMU.
+insert into Apply
+select sID, 'CMU', 'CS', null
+from Student
+where sID not in (select sID in Apply)) S;
+\end{lstlisting} 
+\end{itemize}
+\subsubsection{Delete}
+Delete statement takes the form \texttt{delete from {\color{blue}table} where {\color{blue}condition}}.
+\begin{lstlisting}
+--remove all students who have applied for more than two majors from Student and Apply
+delete from Student
+where sID in (
+  select sID from Apply
+  group by sID
+  having count(distinct major) > 2);
+delete from Apply
+where sID in (
+  select sID from Apply
+  group by sID
+  having count(distinct major) > 2);--forbidden sometimes!
+\end{lstlisting} 
+The second deletion is sometimes forbidden by the DBMS because the table from which tuples will be deleted appears in the condition. The solution is to create a temp table:
+\begin{lstlisting}
+T = select sID from Apply
+    group by sID
+    having count(distinct major) > 2;
+delete from Apply
+where sID in T;
+\end{lstlisting}
+\subsubsection{Update}
+Update statements take the form \texttt{update {\color{blue}table} set attr1 = expr1, ..., attrn = exprn where {\color{blue}condition}}.
+\begin{lstlisting}
+--accept applicants for CMU with GPA < 3.6 but transfer them into economics major.
+update Apply
+set major = 'economics', decision = 'Y'
+where cName = 'CMU' and 
+  sID in (select sID from Student where GPA < 3.6); 
+--transfer EE applicant with highest GPA to CS
+update Apply
+set major = 'CS'
+where major = 'EE' and
+  sID in
+  select sID from Student
+  where GPA >= all
+    select GPA 
+    from Student
+    where sID in (select sID from Apply where major = 'EE');
+\end{lstlisting}
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
