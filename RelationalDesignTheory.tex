@@ -1,0 +1,72 @@
+\ifx\PREAMBLE\undefined
+\input{preamble}
+\begin{document}
+\fi
+\chapter{Relational Design Theory}
+In this chapter we will focus on how to design good schemata for relational databases. Usually there exist many different designs for the schema of a database, some of them being better than others. A very nice theory has been developed for the design of relational databases.
+\section{Overview}
+Consider the example we used in the previous chapter, i.e. the database for students applying for colleges. The following information needs to be stored in the database:
+\begin{itemize}
+\item SSN and name of students
+\item Colleges applied for.
+\item High schools of students, with city
+\item Hobbies of students
+\end{itemize}
+Intuitively, a large schema can hold all the information:
+\begin{lstlisting}
+Apply(SSN, sName, cName, HS, HCity, hobby)
+\end{lstlisting}
+However it is obviously not a good choice because a lot of duplicates will exist in the database, i.e. the same attribute value is likely to appear multiple times in different tuples. Furthermore, duplicates of an attribute value can be modified separately, which is a pitfall for inconsistence. These shortcomings are called \textbf{anomalies} of the design, respectively \textbf{redundancy} and \textbf{update anomaly}. Another peril is \textbf{deletion anomaly}. Since all attributes belong to the same table, it is possible that the deletion of some attributes result in inadvertent deletion of other attributes.
+
+Instead one single large schema, we can use the following schema that includes several tables and induces no anomaly:
+\begin{lstlisting}
+Student(SSN, sName)
+Apply(SSN, cName)
+HighSchool(SSN, HS, city)
+Hobby(SSN, hobby)
+\end{lstlisting}
+
+The approach we will take is to design by decomposition. We will start with ``mega'' relations that contain all information, and then decompose them into smaller relations. The decomposition can be done automatically according to the properties of the data we specify. The resulting set of relations satisfy some sort of \textbf{normal form} that guarantees that no anomalies exist and that no information is lost. The properties and the related normal forms that we will cover are:
+\begin{itemize}
+\item Functional dependencies $\Rightarrow$ Boyce-Codd Normal Form
+\item Multivalued dependencies $\Rightarrow$ Fourth Normal Form
+\end{itemize}
+ We will use the following college application information relations to illustrate the concepts:
+\begin{lstlisting}
+Student(SSN, sName, address, HScode, HSname, HScity, GPA, priority)
+Apply(SSN, cName, state, date, major)
+\end{lstlisting}
+\section{Functional Dependencies}
+Functional dependencies enables the DBMS to store the data more efficiently. It also facilitates the optimization of queries.
+
+Suppose priority is an attribute determined only by GPA, which means that any two tuples with the same GPA have the same priority. Formally speaking, we have
+\begin{equation*}
+\mathtt{\forall t,u \in Student:\:t.GPA = u.GPA\Rightarrow t.priority=u.priority}
+\end{equation*}
+By substituting GPA and priority with any two attributes A and B, we can get the generalized definition of a \textbf{functional dependency} \texttt{A $\Rightarrow$ B} in a relation R: 
+\begin{equation*}
+\mathtt{\forall t,u \in R,\:t.A = u.A\Rightarrow t.B=u.B}
+\end{equation*}
+Actually the definition can be further generalized. We can have a functional dependency between two groups of attributes $\mathtt{A_1,\dots,A_n\Rightarrow B_1,\dots,B_m}$:
+\begin{equation*}
+\mathtt{\forall t,u \in R,\:t[A_1,\dots,A_n] = u[A_1,\dots,A_n]\Rightarrow t[B_1,\dots,B_m]=u[B_1,\dots,B_m]}
+\end{equation*}
+In our example, we have the following functional dependencies in the \texttt{Student} table:
+\begin{itemize}
+\item SSN $\rightarrow$ sName
+\item SSN $\rightarrow$ address
+\item HScode $\rightarrow$ HSname, HScity
+\item HSname, HScity $\rightarrow$ HScode
+\item SSN $\rightarrow$ GPA
+\item GPA $\rightarrow$ priority
+\item SSN $\rightarrow$ priority
+\end{itemize}
+The functional dependencies in \texttt{Apply} table are trickier: they depend on constraints we set on what happens in the real world.
+\begin{itemize}
+\item Every college accepts applications only on a single date: cName $\rightarrow$ date
+\item Students can only apply for one major in each college: SSN, cName $\rightarrow$ major
+\item Students are only allowed to apply for colleges in one state: SSN $\rightarrow$ state
+\end{itemize}
+\ifx\PREAMBLE\undefined
+\end{document}
+\fi

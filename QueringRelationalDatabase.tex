@@ -230,7 +230,7 @@ select S1.sID, S1.sName, S1.GPA, S2.sID, S2.sName, S2.GPA
 from Student S1, Student S2
 where S1.GPA = S2.GPA and S1.sID < S2.sID;
 \end{lstlisting}
-\subsubsection{Set Operators: \texttt{union, intercept} and \texttt{except}}
+\subsubsection{Set Operators: \texttt{union, intersect} and \texttt{except}}
 We can use the union operator to get the union of student names and college names.
 \begin{lstlisting}
 select sName as name from Student
@@ -240,13 +240,13 @@ order by name;
 \end{lstlisting}
 SQL allows the \texttt{union} even without the \texttt{as name}. It will just use \texttt{sName} or \texttt{cName} as the attribute name in the result. The \texttt{all} keyword tells SQL to preserve all duplicate values in the result. By default duplicates are eliminated in the result of \texttt{union}. The \texttt{order by} clause sorts the result as before.
 
-We can use \texttt{intercept} to select students who applied both CS and EE.
+We can use \texttt{intersect} to select students who applied both CS and EE.
 \begin{lstlisting}[escapeinside={@}{@}]
 select sID from Apply where major = 'CS'
-@\color{blue!70}intercept@
+@\color{blue!70}intersect@
 select sID from Apply where major = 'EE';
 \end{lstlisting}
-Some database systems do not support \texttt{intercept}. They don't lose any expressive power because the expression below is equivalent to using \texttt{intercept}:
+Some database systems do not support \texttt{intersect}. They don't lose any expressive power because the expression below is equivalent to using \texttt{intersect}:
 \begin{lstlisting}
 select distinct A1.sID
 from Apply A1, Apply A2
