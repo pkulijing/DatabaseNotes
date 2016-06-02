@@ -43,14 +43,15 @@ Suppose priority is an attribute determined only by GPA, which means that any tw
 \begin{equation*}
 \mathtt{\forall t,u \in Student:\:t.GPA = u.GPA\Rightarrow t.priority=u.priority}
 \end{equation*}
-By substituting GPA and priority with any two attributes A and B, we can get the generalized definition of a \textbf{functional dependency} \texttt{A $\Rightarrow$ B} in a relation R: 
+By substituting GPA and priority with any two attributes $A$ and $B$, we can get the generalized definition of a \textbf{functional dependency}  $A\rightarrow B$ in a relation $R$: 
 \begin{equation*}
-\mathtt{\forall t,u \in R,\:t.A = u.A\Rightarrow t.B=u.B}
+\forall t,u \in R,\:t.A = u.A\Rightarrow t.B=u.B
 \end{equation*}
-Actually the definition can be further generalized. We can have a functional dependency between two groups of attributes $\mathtt{A_1,\dots,A_n\Rightarrow B_1,\dots,B_m}$:
+Actually the definition can be further generalized. We can have a functional dependency between two groups of attributes ${A_1,\dots,A_n\rightarrow B_1,\dots,B_m}$:
 \begin{equation*}
-\mathtt{\forall t,u \in R,\:t[A_1,\dots,A_n] = u[A_1,\dots,A_n]\Rightarrow t[B_1,\dots,B_m]=u[B_1,\dots,B_m]}
+\forall t,u \in R,\:t[A_1,\dots,A_n] = u[A_1,\dots,A_n]\Rightarrow t[B_1,\dots,B_m]=u[B_1,\dots,B_m]
 \end{equation*}
+
 In our example, we have the following functional dependencies in the \texttt{Student} table:
 \begin{itemize}
 \item SSN $\rightarrow$ sName
@@ -67,6 +68,38 @@ The functional dependencies in \texttt{Apply} table are trickier: they depend on
 \item Students can only apply for one major in each college: SSN, cName $\rightarrow$ major
 \item Students are only allowed to apply for colleges in one state: SSN $\rightarrow$ state
 \end{itemize}
+
+Functional dependencies generalize the notion of keys. Suppose we have a relation $R$ with a series of attributes ${\overline{A},\overline{B}}$\footnote{$\overline{{A}}$ is the abbreviation for ${A_1,\dots,A_n}$.} and $R$ contains no duplicate tuples. In such case, having the functional dependency ${\overline{A}\rightarrow\:all\:attributes}$ means that ${\overline{A}}$ is the key of the table.
+
+FDs can be classified into 3 types:
+\begin{description}
+\item[Trivial FD]If ${\overline{B}\subseteq\overline{A}}$, then FD ${\overline{A}\rightarrow\overline{B}}$ is trivial.
+\item[Nontrivial FD]If ${\overline{B}\not\subseteq\overline{A}}$, then FD ${\overline{A}\rightarrow\overline{B}}$ is nontrivial.
+\item[Completely Nontrivial FD]If ${\overline{A}\cap\overline{B}=\emptyset}$, then FD ${\overline{A}\rightarrow\overline{B}}$ is nontrivial.
+\end{description}
+Completely nontrivial FD is the type in which we are the most interested. FDs obey the following basic rules.
+\begin{description}
+\item[Splitting Rule]An FD ${\overline{A}\rightarrow\overline{B}}$ guarantees the FD ${\overline{A}\rightarrow\overline{B'}}$ for any ${\overline{B'}\subseteq\overline{B}}$, i.e. we can split the rhs of an FD. However this does not apply to the lhs.
+\item[Combining Rule]The inverse of splitting rule: rhs of FDs can be combined if they share the same lhs.
+\item[Trivial-Dependency Rule]We have ${\overline{A}\rightarrow\overline{B}}$ for any  ${\overline{B}\subseteq\overline{A}}$.
+\item[Transitive Rule]If we have FDs ${\overline{A}\rightarrow\overline{B}}$ and ${\overline{B}\rightarrow\overline{C}}$, then we must have the FD ${\overline{A}\rightarrow\overline{C}}$.
+\end{description}
+The notion of \textbf{closure} of attributes is quite useful. The closure of attributes $\overline{{A}}$ is the set of all attributes $B$ such that ${\overline{A}\rightarrow B}$. It is noted as ${\overline{A}^+}$ and can be calculated using Algorithm \eqref{closurecalc}.
+\begin{algorithm}[ht]
+\caption{Calculation of ${\{A_1,\dots,A_n\}^+}$}\label{closurecalc}
+\begin{algorithmic}
+\State{Start with set \{${A_1,\dots,A_n}$\}}
+\Repeat
+\If{${\overline{A}\rightarrow\overline{B}}$ \textbf{and} ${\overline{A}}$ in set}
+\State{add ${\overline{B}}$ to set}
+\EndIf
+\Until{set is not changed}
+\end{algorithmic}
+\end{algorithm}
+If ${\overline{A}^+}$ is equal to $S$, the set of all attributes of the table, then ${\overline{A}}$ is a key of the table. In order to find all keys of the table, we need to calculate the closures of all subsets of $S$, and pick out those whose closures are equal to $S$. In order for the algorithm to be more efficient, we can start with subsets of size 1 and increase the size gradually. Once a key has been found, it is guaranteed that all super sets of the key are keys.
+
+Given two sets of FDs $S_1$ and $S_2$, $S_2$ is said to \textbf{follow from} $S_1$ if every relation instance satisfying $S_1$ also satisfies $S_2$. This can be verified by testing whether every FD in $S_2$ follows from $S_1$. To test whether an FD $\overline{A}\rightarrow\overline{B}$ follows from $S$, we can calculate $\overline{A}^+$ based on $S$ and verify if $\overline{B}\subseteq\overline{A}^+$. It can also be tested with Armstrong Axioms, which will not be covered in detail here. When we specify FDs for a relation, what we look for is \textbf{a minimal set of completely nontrivial FDs such that all FDs that hold on this relation follow from the FDs in this set}.
+\section{Boyce-Codd Normal Form}
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
