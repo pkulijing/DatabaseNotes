@@ -53,6 +53,45 @@ In UML, superclass is called \textbf{generalization}, while subclass is called \
 \caption{Example of UML composition \& aggregation}\label{composition}
 \end{figure}
 \section{UML to Relations}
+Designed specified with UML can be translated into relations automatically provided that each ``regular'' class(i.e. not an association class) has a key. 
+\subsection{Class}
+Classes in UML can be translated directly into relations. Each attribute of the class becomes an attribute of the relation, and the primary key becomes the key attribute of the relation. The classes in Figure \ref{class} can be translated into 
+\begin{lstlisting}
+Student(sID,sName,GPA),
+College(cName,state).
+\end{lstlisting}
+\subsection{Association}
+Each association will be translated into its own relation that grabs the key from both sides of the association. The \texttt{Apply} association in Figure \ref{association} can be translated into 
+\begin{lstlisting}
+Apply(sID, cName).
+\end{lstlisting}
+The key of the generated relation depends on the multiplicity of the association. If we have \texttt{0..1} or \texttt{1..1} on one side of the association, then the primary key of the other side is the key of the relation generated from the association. Otherwise the key is the combination of the two primary keys.
+
+Actually this relation may be not needed at all, depending on the multiplicity of the association. If we have \texttt{0..1} or \texttt{1..1} on one side of the association, the information can be folded into the relation generated from the class on the other side of the association. If we let the association in Figure \ref{association} have \texttt{0..1} on the right side, we can get rid of the \texttt{Apply} relation and change \texttt{Student} into
+\begin{lstlisting}
+Student(sID,sName,GPA,cName).
+\end{lstlisting}
+Actually even if we have \texttt{0..2} on the right side of the association, we can still get rid of \texttt{Apply} by changing \texttt{Student} into
+\begin{lstlisting}
+Student(sID,sName,GPA,cName1,cName2).
+\end{lstlisting}
+In the case of self association, the keys from both sides need to be renamed or indexed. For example, for the sibling association between two students, its schema is 
+\begin{lstlisting}
+Sibling(sID1,sID2).
+\end{lstlisting}
+\subsection{Association Class}
+The relation generated from an association class is the relation generated from the association plus the attributes of the association class. For Figure \ref{associationclass}, the \texttt{Apply} relation becomes
+\begin{lstlisting}
+Apply(sID,cName,date,decision).
+\end{lstlisting}
+\subsection{Subclass}
+There exist 3 commonly used translations for subclass relationship:
+\begin{enumerate}
+\item Subclass relations contain superclass key and specialized attributes.
+\item Subclass relations contain all attributes.
+\item One relation contains all superclass attributes and subclass attributes. 
+\end{enumerate}
+The choice among the 3 options depends on properties of the relationship. 
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
