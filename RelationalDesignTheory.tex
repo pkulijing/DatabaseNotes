@@ -36,7 +36,8 @@ The approach we will take is to design by decomposition. We will start with ``me
 Student(SSN, sName, address, HScode, HSname, HScity, GPA, priority)
 Apply(SSN, cName, state, date, major)
 \end{lstlisting}
-\section{Functional Dependencies}
+\section{FDs and BCNF}
+\subsection{Functional Dependencies}
 Functional dependencies enables the DBMS to store the data more efficiently. It also facilitates the optimization of queries.
 
 Suppose priority is an attribute determined only by GPA, which means that any two tuples with the same GPA have the same priority. Formally speaking, we have
@@ -69,13 +70,13 @@ The functional dependencies in \texttt{Apply} table are trickier: they depend on
 \item Students are only allowed to apply for colleges in one state: SSN $\rightarrow$ state
 \end{itemize}
 
-Functional dependencies generalize the notion of keys. Suppose we have a relation $R$ with a series of attributes ${\overline{A},\overline{B}}$\footnote{$\overline{{A}}$ is the abbreviation for ${A_1,\dots,A_n}$.} and $R$ contains no duplicate tuples. In such case, having the functional dependency ${\overline{A}\rightarrow\:all\:attributes}$ means that ${\overline{A}}$ is the key of the table.
+Functional dependencies generalize the notion of keys. Suppose we have a relation $R$ with a series of attributes ${\overline{A},\overline{B}}$ ($\overline{{A}}$ is the abbreviation for ${A_1,\dots,A_n}$.) and $R$ contains no duplicate tuples. In such case, having the functional dependency ${\overline{A}\rightarrow\:all\:attributes}$ means that ${\overline{A}}$ is the key of the table.
 
 FDs can be classified into 3 types:
 \begin{description}
 \item[Trivial FD]If ${\overline{B}\subseteq\overline{A}}$, then FD ${\overline{A}\rightarrow\overline{B}}$ is trivial.
 \item[Nontrivial FD]If ${\overline{B}\not\subseteq\overline{A}}$, then FD ${\overline{A}\rightarrow\overline{B}}$ is nontrivial.
-\item[Completely Nontrivial FD]If ${\overline{A}\cap\overline{B}=\emptyset}$, then FD ${\overline{A}\rightarrow\overline{B}}$ is nontrivial.
+\item[Completely Nontrivial FD]If ${\overline{A}\cap\overline{B}=\emptyset}$, then FD ${\overline{A}\rightarrow\overline{B}}$ is completely nontrivial.
 \end{description}
 Completely nontrivial FD is the type in which we are the most interested. FDs obey the following basic rules.
 \begin{description}
@@ -87,7 +88,7 @@ Completely nontrivial FD is the type in which we are the most interested. FDs ob
 The notion of \textbf{closure} of attributes is quite useful. The closure of attributes $\overline{{A}}$ is the set of all attributes $B$ such that ${\overline{A}\rightarrow B}$. It is noted as ${\overline{A}^+}$ and can be calculated using Algorithm \eqref{closurecalc}.
 \begin{algorithm}[ht]
 \caption{Calculation of ${\{A_1,\dots,A_n\}^+}$}\label{closurecalc}
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \State{Start with set \{${A_1,\dots,A_n}$\}}
 \Repeat
 \If{${\overline{A}\rightarrow\overline{B}}$ \textbf{and} ${\overline{A}}$ in set}
@@ -96,10 +97,158 @@ The notion of \textbf{closure} of attributes is quite useful. The closure of att
 \Until{set is not changed}
 \end{algorithmic}
 \end{algorithm}
+
 If ${\overline{A}^+}$ is equal to $S$, the set of all attributes of the table, then ${\overline{A}}$ is a key of the table. In order to find all keys of the table, we need to calculate the closures of all subsets of $S$, and pick out those whose closures are equal to $S$. In order for the algorithm to be more efficient, we can start with subsets of size 1 and increase the size gradually. Once a key has been found, it is guaranteed that all super sets of the key are keys.
 
 Given two sets of FDs $S_1$ and $S_2$, $S_2$ is said to \textbf{follow from} $S_1$ if every relation instance satisfying $S_1$ also satisfies $S_2$. This can be verified by testing whether every FD in $S_2$ follows from $S_1$. To test whether an FD $\overline{A}\rightarrow\overline{B}$ follows from $S$, we can calculate $\overline{A}^+$ based on $S$ and verify if $\overline{B}\subseteq\overline{A}^+$. It can also be tested with Armstrong Axioms, which will not be covered in detail here. When we specify FDs for a relation, what we look for is \textbf{a minimal set of completely nontrivial FDs such that all FDs that hold on this relation follow from the FDs in this set}.
-\section{Boyce-Codd Normal Form}
+\subsection{Boyce-Codd Normal Form}
+In this section we will cover how to design relations in \textbf{Boyce-Codd Normal Form(BCNF)} using functional dependencies. Consider a relation $R(A_1,\dots,A_n)$. If relations $R_1(B_1,\dots,B_m)$ and $R_2(C_1,\allowbreak\dots,C_k)$ satisfy
+\begin{itemize}
+\item $\overline{B}\cup\overline{C}=\overline{A}$,
+\item $R_1\bowtie R_2=R$,
+\end{itemize}
+then $R_1$ and $R_2$ are called a \textbf{decomposition} of $R$. The two properties are called \textbf{lossless join}. In this case we actually have $R_1 = \Pi_{\overline{B}}R$ and $R_2 = \Pi_{\overline{C}}R$.
+
+\textbf{A relation $R$ with FDs is said to be in BCNF if $\overline{A}$ is a key for each $\overline{A}\rightarrow\overline{B}$.} A relation not in BCNF allows two or more tuples to have the same value of $\overline{A}$ and $B$ for some FD $\overline{A}\rightarrow\overline{B}$, which is called a \textbf{BCNF violation}.
+
+The decomposition of relation $R$ into relations in BCNF can be carried out with Algorithm \eqref{bcnfdecomp}.
+\begin{algorithm}[ht]
+\caption{BCNF decomposition}\label{bcnfdecomp}
+\begin{algorithmic}[1]
+\Input\Statex{Relation $R$ + FDs for $R$}
+\Output\Statex{Decomposition of $R$ into BCNF relations with lossless join}
+\State{Compute keys for $R$}
+\Repeat
+	\State{Pick a relation $R'$ with $\overline{A}\rightarrow\overline{B}$ that violates BCNF}
+	\State{Decompose $R'$ into $R_1(\overline{A},\overline{B})$ and $R_2(\overline{A},rest)$}
+	\State{Compute FDs for $R_1$ and $R_2$}
+	\State{Compute keys for $R_1$ and $R_2$} 
+\Until{All relations are in BCNF}
+\end{algorithmic}
+\end{algorithm}
+
+In some cases it can be better to have larger relations in the result. For this purpose, instead of using $R_1(\overline{A},\overline{B})$, we can use $R_1(\overline{A},\overline{B}A^+)$.
+\section{MVD and 4NF}
+\subsection{Multi-valued Dependencies}
+Consider the relation
+\begin{lstlisting}
+Apply(SSN,cName,hobby)
+\end{lstlisting} 
+without any FD (i.e. colleges and hobbies are independent). In this case the key is the combination of all three attributes, and the relation is in BCNF. But this is not a good design because a student that applies for \texttt{m} colleges and has \texttt{n} hobbies will yield \texttt{mn} tuples, which obviously involves a lot of redundancy. Multi-value dependency is introduced to remove such redundancy. 
+
+\textbf{A relation $R$ is said to have multi-valued dependency $\overline{A}\twoheadrightarrow\overline{B}$ if $\forall t,u\in R$ that satisfy $t[\overline{A}]=u[\overline{A}]$, $\exists v\in R$ such that $v[\overline{A}]=t[\overline{A}]$, $v[\overline{B}]=t[\overline{B}]$ and $v[rest]=u[rest]$.} In the example above, we have the MVD $\mathtt{SSN\twoheadrightarrow cName}$.
+
+Consider a more complicated example:
+\begin{lstlisting}
+Apply(SSN,cName,date,major,hobby)
+\end{lstlisting}
+Here we suppose that hobbies are revealed to colleges selectively (i.e. $\mathtt{SSN\twoheadrightarrow cName}$ no longer holds). We also require that each student can apply for each college only once on each date. Students can apply for multiple majors of each college. These specifications leave us with the following dependencies:
+\begin{itemize}
+\item $\mathtt{SSN, cName\rightarrow date}$,
+\item $\mathtt{SSN, cName, date\twoheadrightarrow major}$.
+\end{itemize}
+
+As with FDs, we have the following notions:
+\begin{description}
+\item[Trivial MVD]An MVD $\overline{A}\twoheadrightarrow\overline{B}$ is trivial if either $\overline{B}\subseteq\overline{A}$ or $\overline{A}\cup\overline{B}=\{all\:attributes\}$.
+\item[Nontrivial MVD]MVDs that are not trivial. 
+\end{description}
+The triviality when $\overline{A}\twoheadrightarrow\overline{B}$ comes from the fact that $u$ itself can serve as the $v$ whose existence is required by the definition. The case in which $\overline{A}\cup\overline{B}=\{all\:attributes\}$ is trivial because there is no ``rest'', thus $t$ itself can serve as the $v$.
+
+The following rules\footnote{Proof TBD} hold for MVD:
+\begin{description}
+\item[FD-is-an-MVD Rule]If $\overline{A}\rightarrow\overline{B}$, then $\overline{A}\twoheadrightarrow\overline{B}$. $u$ itself serves as the $v$ in the definition of MVD.
+\item[Intersection Rule]In the presence of $\overline{A}\twoheadrightarrow\overline{B}$ and $\overline{A}\twoheadrightarrow\overline{C}$, we must have $\overline{A}\twoheadrightarrow\overline{B}\cap\overline{C}$.
+\item[Transitive Rule]If $\overline{A}\twoheadrightarrow\overline{B}$ and $\overline{B}\twoheadrightarrow\overline{C}$, then $\overline{A}\twoheadrightarrow\overline{C}-\overline{B}$.
+\end{description}
+\subsection{4th Normal Form}
+\textbf{A relation $R$ with MVDs is said to be in 4th Normal Form(4NF) if for each nontrivial $\overline{A}\twoheadrightarrow\overline{B}$}, $\overline{A}$ is a key. Since all FDs are MVDs, a relation in 4NF is guaranteed to be in BCNF, i.e. 4NF is stronger than BCNF.
+
+The decomposition of relation R into relations in 4NF is provided in Algorithm \eqref{fnfdecomp}. 
+\begin{algorithm}[ht]
+\caption{4NF decomposition}\label{fnfdecomp}
+\begin{algorithmic}[1]
+\Input\Statex{Relation $R$ + FDs for $R$ + MVDs for $R$}
+\Output\Statex{Decomposition of $R$ into 4NF relations with lossless join}
+\State{Compute keys for $R$ (using FDs)}
+\Repeat
+	\State{Pick a relation $R'$ with $\overline{A}\twoheadrightarrow\overline{B}$ that violates 4NF}
+	\State{Decompose $R'$ into $R_1(\overline{A},\overline{B})$ and $R_2(\overline{A},rest)$}
+	\State{Compute FDs and MVDs for $R_1$ and $R_2$}
+	\State{Compute keys for $R_1$ and $R_2$} 
+\Until{All relations are in 4NF}
+\end{algorithmic}
+\end{algorithm}
+
+Consider the example above concerning the relation
+\begin{lstlisting}
+Apply(SSN,cName,date,major,hobby).
+\end{lstlisting}
+According to MVD $\mathtt{SSN, cName, date\twoheadrightarrow major}$, it can be decomposed into
+\begin{lstlisting}
+A1(SSN,cName,date,major),
+A2(SSN,cName,date,hobby).
+\end{lstlisting}
+Then according to the FD $\mathtt{SSN, cName\rightarrow date}$, \texttt{A1,A2} can be decomposed into
+\begin{lstlisting}
+A3(SSN,cName,date),
+A4(SSN,cName,major),
+A5(SSN,sName,hobby).
+\end{lstlisting}
+\section{Shortcomings of BCNF and 4NF}
+BCNF and 4NF are supposed to help us design ``good'' relations up to our needs. However, in some cases relations in BCNF or 4NF are not satisfactory. We will provide a few examples to illustrate their shortcomings.
+\subsubsection{Example 1}
+Consider the relation
+\begin{lstlisting}
+Apply(SSN,cName,date,major).
+\end{lstlisting}
+Suppose that each student can only apply for each college once for one major, and that colleges have non-overlapping application dates (but one college can have several application dates). In this case we have FDs
+\begin{itemize}
+\item SSN, cName$\rightarrow$date, major;
+\item date$\rightarrow$cName.
+\end{itemize}
+The key of the relation is \texttt{(SSN,cName)}. It is not in BCNF because \texttt{date} is not a key. Decomposition of \texttt{Apply} into relations in BCNF yields
+\begin{lstlisting}
+A1(date,cName),
+A2(SSN,date,major).
+\end{lstlisting}
+They are in BCNF, which however does not make the schema a good design. We would rather keep the original schema, which is actually in \textbf{3rd normal form}, a normal form weaker than BCNF.
+\subsubsection{Example 2}
+Different orders to apply FDs during the decomposition may result in different relations, sometimes not satisfactory. Consider the relation
+\begin{lstlisting}
+Student(SSN,HSname,GPA,priority)
+\end{lstlisting}
+with FDs
+\begin{enumerate}
+\item \label{fd1}SSN$\rightarrow$GPA,
+\item \label{fd2}GPA$\rightarrow$priority,
+\item \label{fd3}SSN$\rightarrow$priority,
+\item \label{fd4}SSN$\rightarrow$GPA, priority.
+\end{enumerate}
+Its key is \texttt{(SSN,HSname)} and it is not in BCNF. During the decomposition, if we apply the FDs in the order FD\ref{fd3}, FD\ref{fd1}, we will end up with
+\begin{lstlisting}
+S1(SSN,priority),
+S2(SSN,GPA),
+S3(SSN,HSname).
+\end{lstlisting}
+If we start with FD\ref{fd4}, we will end up with
+\begin{lstlisting}
+S1(SSN,GPA,priority),
+S2(SSN,HSname),
+\end{lstlisting}
+which is clearly a better design.
+\subsubsection{Example 3}
+Sometimes it might be preferable not to carry out the decomposition. Consider the relation
+\begin{lstlisting}
+Score(SSN,sName,SAT,CAT)
+\end{lstlisting}
+which keeps record of scores students get in SAT and CAT tests. Each student can take the tests multiple times. The only FD is 
+\begin{itemize}
+\item SSN$\rightarrow$sName.
+\end{itemize}
+The relation can be decomposed into three relations in BCNF, but we might prefer not to do that if all queries that we will make return the combination of student name and test scores. 
+\subsubsection{Example 4}
+Sometimes rather than decomposing a large relation, we might want to compose small relations that have been ``over-decomposed'' into larger ones that are still in BCNF/4NF.
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi

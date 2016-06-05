@@ -1,0 +1,24 @@
+input metauml;
+beginfig(1);
+    Class.A("Student")("sID", "sName", "GPA")();
+    Class.B("ForeignS")("country")();
+    Class.C("DomesticS")("state", "SSN")();
+    Class.D("APStudent")()();
+    Class.E("APCourse")("course#","title","units")();
+    Class.F("APInfo")("year","grade")();
+    topToBottom(25)(A,C);
+    leftToRight(30)(B,C);
+    leftToRight(30)(C, D);
+    leftToRight(60)(D, E);
+    F.n = .5[D.e,E.w] + (0,-20);
+    drawObjects(A,B,C,D,E,F);
+    clink(inheritance)(B,A);
+    clink(inheritance)(C,A);
+    clink(inheritance)(D,A);
+    clink(association)(D,E);
+    item(iAssoc)("Took")(obj.s =.5[D.e,E.w]);
+    item(iAssoc)("1..*")(obj.nw = D.e);
+    item(iAssoc)("1..10")(obj.ne = E.w);
+    link(association)(F.n -- .5[D.e,E.w]);
+endfig;
+end

@@ -1,0 +1,58 @@
+\ifx\PREAMBLE\undefined
+\input{preamble}
+\begin{document}
+\fi
+\chapter{Unified Modeling Language}
+\section{UML Data Modeling}
+Data modeling means the way in which data is represented in applications. There are concrete models like relational model and XML model. But during the design phase, we tend to represent the data in a high-level model that can later be translated, usually automatically, into models specific to various implementations. Famous high-level design models include Entity-Relationship Model(E/R) and \textbf{Unified Modeling Language(UML)}, the latter of which is nowadays the mainstream model. It is a graphical model applied to both DB design and program design. We will focus on the data modeling subset of UML.
+
+UML data modeling contains 5 concepts: classes, associations, association classes, subclasses, composition \& aggregation. 
+\subsection{Class}
+\textbf{Class} is a UML concept shared by data modeling and program design. It contains a \textbf{name}, a series of \textbf{attributes} and a series of \textbf{methods}. For the purpose of data modeling, we add the concept of \textbf{primary key(pk)} for the methods, and we don't need any method. Classes look a lot like relations and can be translated directly into relations. For our student application example, we will have a class \texttt{Student} with attributes \texttt{sId(pk),sName,GPA}, a class \texttt{College} with attributes \texttt{cName(pk),state}, as shown in Figure \ref{class}.
+\begin{figure}[ht]
+\centering
+\includegraphics{class.1}
+\caption{Example of UML classes}\label{class}
+\end{figure}
+\subsection{Association}
+\textbf{Association} captures relationships between objects of two classes. For example, there can exist \texttt{Apply} relationship between \texttt{Student} and \texttt{College}, as shown in Figure \ref{association}.
+\begin{figure}[ht]
+\centering
+\includegraphics{association.1}
+\caption{Example of UML associations}\label{association}
+\end{figure}
+
+\textbf{Multiplicity} of an association specifies how many objects of class A can be related to an object of class B. In Figure \ref{association}, two multiplicities are marked: each student can apply for up to 5 colleges and must apply for at least one college, while each college takes no more than 20000 applications. If no upper limit exists, its position should be held by a \texttt{*}. \texttt{0..*} can be abbreviated as \texttt{*}, while \texttt{1..1} can be abbreviated as \texttt{1}. Concepts often used are one-to-one, many-to-one, one-to-many and complete associations. ``Complete'' means that all objects must be involved in the association, i.e. the lower limit is 1. If no multiplicity is specified, the default is \texttt{1..1}, i.e. complete one-to-one association.
+
+Association can exist between a class and itself. For example, a college's main campus and its branches, students and their siblings, etc. 
+\subsection{Association Class}
+\textbf{Association classes} captures relationships with attributes between objects of two classes. For example, the \texttt{apply} relationship has attributes \texttt{date,decision}, as shown in Figure \ref{associationclass}. 
+\begin{figure}[ht]
+\centering
+\includegraphics{associationclass.1}
+\caption{Example of UML association classes}\label{associationclass}
+\end{figure}
+
+A shortcoming of UML is that it cannot describe multiple associations between two objects that exist together, i.e. only one association can be captured between a pair of objects. In our example, if students can apply for the same college multiple times (e.g. for different majors), we can no longer use the association class \texttt{AppInfo}. A class \texttt{AppInfo} with separate relationships to students and colleges needs to be added. 
+
+Note that if the multiplicity of an association is \texttt{1..1} or \texttt{0..1}, it is actually unnecessary to have an association class to capture its attributes: they can be moved into the object itself.  
+\subsection{Subclass} 
+\textbf{Subclass} provides description of inheritance relationship in UML. An example is given in Figure \ref{subclass}. Superclass \texttt{Student} has 3 subclasses: \texttt{ForeignS} for foreign students, \texttt{DomesticS} for domestic students, and \texttt{APStudent} for students who took AP courses. Each AP student can take 1-10 AP courses, and there is at least 1 student in each AP course.
+\begin{figure}[ht]
+\centering
+\includegraphics{subclass.1}
+\caption{Example of UML subclasses}\label{subclass}
+\end{figure}
+
+In UML, superclass is called \textbf{generalization}, while subclass is called \textbf{specialization}. A subclass relationship is said to be \textbf{complete} if each instance of the superclass belongs to at least one subclass, otherwise it is said to be \textbf{incomplete/partial}. If each instance of the superclass belongs to at most one subclass, the subclass relationship is said to be \textbf{disjoint/exclusive}, otherwise it is said to be \textbf{overlapping}.
+\subsection{Composition \& Aggregation}
+\textbf{Composition} describes the relationship that objects of one class necessarily belong to objects of another class. If such belonging relationship is not necessary, it is called \textbf{aggregation}\footnote{Aggregation in UML has nothing to do with the aggregation functions in SQL.}. An example is provided in \ref{composition}. A college consists of a few departments, and each college can have a few apartments as its property, while an apartment does not have to belong to a college.
+\begin{figure}[ht]
+\centering
+\includegraphics{composition.1}
+\caption{Example of UML composition \& aggregation}\label{composition}
+\end{figure}
+\section{UML to Relations}
+\ifx\PREAMBLE\undefined
+\end{document}
+\fi
