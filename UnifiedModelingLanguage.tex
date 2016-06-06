@@ -53,7 +53,7 @@ In UML, superclass is called \textbf{generalization}, while subclass is called \
 \caption{Example of UML composition \& aggregation}\label{composition}
 \end{figure}
 \section{UML to Relations}
-Designed specified with UML can be translated into relations automatically provided that each ``regular'' class(i.e. not an association class) has a key. 
+Designed specified with UML can be translated into relations automatically provided that each ``regular'' class(i.e. not an association class, a subclass or a class contained in another class in a composite relationship) has a key. 
 \subsection{Class}
 Classes in UML can be translated directly into relations. Each attribute of the class becomes an attribute of the relation, and the primary key becomes the key attribute of the relation. The classes in Figure \ref{class} can be translated into 
 \begin{lstlisting}
@@ -87,11 +87,21 @@ Apply(sID,cName,date,decision).
 \subsection{Subclass}
 There exist 3 commonly used translations for subclass relationship:
 \begin{enumerate}
-\item Subclass relations contain superclass key and specialized attributes.
-\item Subclass relations contain all attributes.
-\item One relation contains all superclass attributes and subclass attributes. 
+\item \label{ds1}Subclass relations contain superclass key and specialized attributes.
+\item \label{ds2}Subclass relations contain all superclass attributes and specialized attributes.
+\item \label{ds3}One relation contains all superclass attributes and subclass attributes. 
 \end{enumerate}
-The choice among the 3 options depends on properties of the relationship. 
+The choice among the 3 options depends on properties of the relationship. If the subclasses are heavily overlapping, the design \ref{ds3} is preferable. If the subclasses are disjoint and complete, then design \ref{ds2} becomes the best choice. Let $sz1, sz2, sz3$ represent number of tuples in each design for s specific set of data, in general we have $sz3\leq sz2\leq sz1$, because design \ref{ds3} has one tuple for each object regardless of subclassing, design \ref{ds2} has one tuple for each object, plus one more each time an object is in more than one subclass, and design \ref{ds1} has one tuple for each object plus one more each time an object is in a subclass.
+
+Note that subclasses are not considered as ``regular'' classes that must have a key for automatic translation. In fact a subclass inherits the key from its superclass.
+\subsection{Composition \& Aggregation}
+In a composition/aggregation relationship, we add the key of the container class into the relation of the contained class. In the case of aggregation, the key can be NULL. The composition \& aggregation relationship in Figure \ref{composition} results in the following relations:
+\begin{lstlisting}
+College(cName,state),
+Department(dName,building,cName),
+Apartment(apart#,nbUnits,cName).
+\end{lstlisting}
+Note that in a composite relationship, the relation generated from the contained class (e.g. \texttt{Department} above) is not considered as a ``regular'' class.
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
