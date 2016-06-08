@@ -4,8 +4,137 @@
 \fi
 \chapter{Indexes and Transactions}
 \section{Indexes}
-Indexes, or indices is the primary mechanism to gain improved performance in relational database. It's a persistent data structure stored in the database. We will focus on its application (instead of implementation).
+Indexes, or indices are the primary mechanism to gain improved performance in relational database. It's a persistent data structure stored in the database. We will focus on its application (instead of implementation).
 
+When we want to speed up queries that involve conditions over certain columns, we can build \textbf{indexes} on those columns. Indexes help the query execution engine to run the queries much faster. Rather than scanning the entire table, it can now locate eligible tuples directly. Indexes can be built on one single attribute or combination of a few attributes. Typically, the performance can be improved by a few orders of magnitude. 
+
+Indexes can be implemented with either balance trees (B tree/B+ tree) or hash tables. Balance tree implementation can be used to accelerate queries on comparison or equality conditions, while hash table implementation can only speed up equality tests. Balance tree has logarithmic running time while hash table has constant running time, thus is preferable when all conditions are equality tests. 
+
+Many DBMSs build indexes automatically on the primary key attributes, sometimes also on unique attributes. 
+
+Indexes do have some drawbacks. 
+\begin{enumerate}
+\item Occupies extra space. Not serious in modern systems.
+\item Overhead for index creation. Can be quite time-consuming, but usually worthwhile.
+\item Overhead for index maintenance. Index has to be rebuilt when the database is modified. If the db is modified too frequently, it may be inappropriate to build indexes on it. 
+\end{enumerate}
+Considering these drawbacks, the benefit of an index depends on:
+\begin{itemize}
+\item size of the table;
+\item data distributions;
+\item query v.s. update load.
+\end{itemize}
+Over history, \textbf{physical design advisors} have been developed to help us decide whether and where to build indexes. They take the database (usually its statistics) and the workload as input, and outputs recommended indexes to build. 
+
+SQL statements involving indexes are listed as follows.
+\begin{lstlisting}
+--Create index on attribute(s)
+Create Index IndexName on T(A);
+Create Index IndexName on T(A1,...,An);
+--Create index with the requirement that no duplicates exist for A. Report error otherwise.
+Create Unique Index IndexName on T(A);
+--Remove an index
+Drop Index IndexName;
+\end{lstlisting}
+\section{Transactions}
+\subsection{Motivation}
+The concept of transaction is motivated by two independent requirements:
+\begin{itemize}
+\item Concurrent DB access;
+\item Resilience to system failures.
+\end{itemize}
+Concurrent access to the DB can happen at different levels:
+\begin{enumerate}
+\item\textbf{Attribute Level}. If the following two statements are executed concurrently,
+\begin{lstlisting}
+update College set enrollment = enrollment + 1500 where cName = 'Stanford';
+update College set enrollment = enrollment + 1000 where cName = 'Stanford';
+\end{lstlisting}
+The enrollment of Stanford can end up increased by 1000, 1500 or 2500.
+\item\textbf{Tuple Level}. Two concurrent statements as follows
+\begin{lstlisting}
+update Apply set major = 'CS' where sId = 123;
+update Apply set decision = 'Y' where sId = 123;
+\end{lstlisting}
+are not guaranteed to update the two attributes as expected. It is possible that only one of them is reflected in the result.
+\item\textbf{Table Level}. The two concurrent statements 
+\begin{lstlisting}
+update Apply set decision = 'Y' 
+where sID in (select sID from Student where GPA>3.9);
+update Student set GPA=1.1*GPA where sizeHS>2500;
+\end{lstlisting}
+are expected to be executed in a certain sequence. A mechanism should exist to guarantee the consistency.
+\item\textbf{Multi-statement Inconsistency}.
+\begin{lstlisting}
+--Client 1
+insert into Archive
+select * from Apply where decision='N';
+delect from Apply where decision='N';
+--Client 2
+select count(*) from Apply;
+select count(*) from Archive;
+\end{lstlisting}
+The execution of the two groups of statements by two clients are not expected to overlap, otherwise the result received by client 2 is meaningless.
+\end{enumerate}
+
+The goal of handling concurrent access to DB is to \textbf{make the client feel that the sequence of SQL statements he or she initiated is executed in isolation}. A naive but safe approach would be to always execute them in isolation. But we do want to enable concurrency whenever it is safe to do so. 
+
+The ability to survive system failures is essential for databases. The goal of handling system failures is to \textbf{guarantee all-or-nothing execution regardless of failures}. In case of a system failures, a sequence of statements in the process of being executed should be rolled back. 
+\subsection{Properties}
+\textbf{Transaction} is the mechanism that handles both concurrency and failures. A transaction is a sequence of one or more SQL operations treated as a unit. A transaction appears to run in isolation, and guarantees to be executed entirely or not at all. 
+
+In standard SQL, a transaction begins automatically on the fist SQL statement. On \texttt{commit}, a transaction ends and a new one begins. The current transaction also ends when the session terminates. In \texttt{autocommit} mode, each single statement is viewed as a transaction.
+
+A transaction implementation should have the ACID properties: Atomicity, Consistency, Isolation, Durability.
+\subsubsection{Atomicity}
+Atomicity guarantees that each transaction is all-or-nothing. If the systems crashes during the execution of a transaction, all modifications to the database will be rolled back when the system is restarted. 
+
+Although the rollback mechanism is designed to handle crashes, it can also be initiated by client. It can be helpful but must be used with caution: the system rolls back, and only rolls back modifications to data in the database. Other side effects cannot be undone. 
+\subsubsection{Consistency}
+An integrity constraint is a specification of legal states of the database. Following the consistency requirement, each client can assume that all constraints hold at the beginning of a transaction, and must guarantee that all constraints hold after the transaction ends. 
+\subsubsection{Isolation}
+A few clients may each initiate a series of transactions, each containing a series of statements. The execution of all the statements must have \textbf{serializability}: execution of statements in different transactions may be interleaved, but the execution must be equivalent to some sequential / serial order of all transactions.
+
+Serializability guarantees that the execution is equivalent to some order of all transactions, but the results of different orders are not guaranteed to be the same. In examples 3 and 4 above, the results are different for different orders.
+\subsubsection{Durability}
+Durability guarantees that in case the system crashes after a transaction commits, all effects of the transaction remain in the database. The implementation is based on the idea on logging. 
+\subsection{Isolation Levels}
+The transaction mechanism guarantees safe behavior of the database in case of concurrency and failures. But it does cause some overheads reduction of concurrency. DBMSs offer weaker \textbf{isolation levels} to counteract against the deficiencies. Three levels are listed in the SQL standard: \textbf{read uncommitted, read committed, repeatable read}, from the weakest to the strongest. They induce less overhead, allow more currency, but guarantee less consistency.  
+
+Isolation levels are set at transaction level. Each client can set different isolation levels for different transactions. They are set ``in the eye of the beholder'': the isolation level of a transaction does not have any effect on behavior of any other transactions running concurrently.
+
+A data item is said to be \textbf{dirty} if it is written by an uncommitted transaction. Consider the two transactions:
+\begin{lstlisting}
+--T1
+update College set enrollment=enrollment+1000
+where cName='Stanford';
+--T2
+select avg(enrollment) from College;
+\end{lstlisting}
+T1 modifies the value of enrollment for Stanford, which is read by T2. If T1 gets rolled back for some reason, what T2 has read would be a value that never existed in the DB. Such a read is called a \textbf{dirty read}. The notion of dirty read only exists between different transactions. A read inside the same transaction is never a dirty read.
+\subsubsection{Read Uncommitted}
+A transaction having the isolation level read uncommitted can perform dirty reads. Serializability is obviously broken. 
+\subsubsection{Read Committed}
+A transaction having the isolation level read committed cannot perform dirty reads. Nonetheless, it does not guarantee serializability. If a value modified in transaction T1 is read twice in transaction T2, it is possible that the two reads occurred respectively before and after T1, which breaks serializability. 
+\subsubsection{Repeatable Read}
+A transaction with the isolation level repeatable read requires that no dirty reads be performed, and that an item read multiple times cannot change value. 
+
+However, even with the additional condition, serializability is not guaranteed. If two values modified in transaction T1 are both read in transaction T2, it is possible that T2 will read the two values respectively before and after T1, which apparently breaks serializability.
+
+Moreover, repeatable read does not prevent new tuples from being added into the relation, which causes the problem of ``phantom tuples''. Consider the example
+\begin{lstlisting}
+--T1
+insert into Student /*100 new tuples*/
+--T2
+set transaction isolation level repeatable read;
+select avg(GPA) from Student;
+select max(GPA) from Student;
+\end{lstlisting} 
+It is possible that \texttt{avg(GPA)} and \texttt{max(GPA)} are calculated respectively before and after the insertion, which breaks serializability. The tuples inserted in T1 are the phantom tuples. Note that the problem does not exist for deletion.
+
+Repeatable read is chosen by some mainstream DBMSs as the default isolation level.
+\subsection{Read Only Transaction}
+Transactions can also be set \texttt{Read Only} for optimized performance. It is independent from isolation levels.
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
