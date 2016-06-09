@@ -3,6 +3,77 @@
 \begin{document}
 \fi
 \chapter{Constraints and Triggers}
+Constraints, or integrity constraints constrain the allowable states of the database, while triggers monitor database changes, check conditions and possibly initiates actions on being activated. 
+\section{Overview}
+\subsection{Constraints}
+\textbf{Integrity constraints} impose restrictions on allowable data beyond those imposed by the structure of the DB and types of the attributes. For example, in our \texttt{Student} table, the \texttt{GPA} value is required to fall inside (0.0, 4.0]; in the \texttt{Apply} table and the value of \texttt{decision} should be either \texttt{Y}, \texttt{N} or \texttt{Null}. Constraints can be logically more complicated, e.g. the condition that no decisions have been made for CS applicants can be expressed as the constraint \texttt{major = `CS' $\Rightarrow$ decision = Null}. 
+
+Constrains are enforced for several purposes:
+\begin{itemize}
+\item To automatically catch data-entry error when doing insertions. 
+\item As correctness criteria when doing updates. 
+\item To enforce consistency.
+\item To inform the system of properties of the data so as to facilitate better storage and queries.
+\end{itemize}
+
+Constraints are classified into:
+\begin{itemize}
+\item Non-null constraints. An attribute can be forbidden from having null value.
+\item Key constraints. Attributes specified as key should have unique value combinations. 
+\item Referential integrity (foreign key).
+\item Attribute-based constraints.
+\item Tuple-based constraints.
+\item General assertions.
+\end{itemize}
+
+Constraints can be declared either when the schema is created or later. In the former case, it is checked after bulk loading, while in the latter case it is checked on the state of the DB at the time of the declaration. 
+
+Normally a constraint should be checked after every modification that may cause a violation to it. Constraint checking can also be carried out only after each transaction, which is called deferred constraint checking: constraints are allowed to be violated during the transaction, but if any violation still exists after the transaction is completed, the whole transaction gets rolled back. 
+\subsection{Trigger}
+\textbf{Trigger} is a more dynamic concept than constraints. Constraints put restrictions on each state of the DB, while triggers limit how the DB evolves. Triggers are also called ``Event-Condition-Action Rules'' because they usually have the form 
+\begin{center}
+When \emph{event} occurs, check \emph{condition}; If true, do \emph{action}. 
+\end{center}
+For example, a trigger can be set up to accept applications from student with a GPA  higher than 3.95 automatically:
+\texttt{insert application with GPA$>$3.95 $\Rightarrow$ accept}.
+
+Triggers are enforced for the following purposes:
+\begin{itemize}
+\item To move logic from application into DBMS.
+\item To enforce constraints. In mainstream implementations, the trigger feature is more expressive than the constraint feature. Moreover, triggers make it possible to repair the DB when a constraint violation is found.
+\end{itemize}
+\section{SQL for Constraints}
+\subsection{Non-null Constraints}
+To add a non-null constraint to an attribute when creating the table, we need to add the keyword \texttt{not null} to the attribute. 
+\begin{lstlisting}
+create table Student(sID int, sName text, GPA real not null, sizeHS int);
+\end{lstlisting}
+\subsection{Key Constraints}
+A key constraint requires that values of the specified attribute be unique.
+\begin{lstlisting}
+create table Student(sID int primary key, sName text, GPA real, sizeHS int);
+\end{lstlisting}
+Suppose the table contains two tuples:
+\begin{lstlisting}
+234 Bob 3.6 1500
+123 Amy 3.9 1000
+\end{lstlisting}
+The statement
+\begin{lstlisting}
+update Student set sID = sID - 111;
+\end{lstlisting}
+is possible to cause an error because Bob will have the same sID as Amy if it gets updated first. This demonstrates the situation in which deferred constraint checking should be used.
+
+There can be only one primary key in each table. If attributes other than the primary key is supposed to be unique, the keyword \texttt{unique} should be used.
+\begin{lstlisting}
+create table Student(sID int primary key, sName text unique, GPA real, sizeHS int);
+\end{lstlisting}
+The following examples demonstrate the case in which a combination of attributes is used as the primary key.
+\begin{lstlisting}
+create table College(cName text, state text, enrollment int, primary key (cName,state));
+create table Apply(sID int, cName text, major text, decision text, primary(sID, cName), unique(sID, major));
+\end{lstlisting}
+Note that Null values are handled specially. SQL standard and most implementations allow repeated Null values even if the column is declared as unique. However repeated Null values are usually not permitted for the primary key.
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
