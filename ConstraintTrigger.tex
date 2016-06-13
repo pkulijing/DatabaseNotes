@@ -74,6 +74,75 @@ create table College(cName text, state text, enrollment int, primary key (cName,
 create table Apply(sID int, cName text, major text, decision text, primary(sID, cName), unique(sID, major));
 \end{lstlisting}
 Note that Null values are handled specially. SQL standard and most implementations allow repeated Null values even if the column is declared as unique. However repeated Null values are usually not permitted for the primary key.
+\subsection{Attribute/Tuple Based Constraints}
+Attribute-based constraints are often used to catch data entry errors concerning ranges of attributes. They are check whenever a tuple is inserted or updated. In the following example we put limits to the range of GPA and sizeHS. 
+\begin{lstlisting}
+create table Student(
+	sID int, sName text,
+	GPA read check(GPA <= 4.0 and GPA > 0.0),
+	sizeHS int check(sizeHS < 5000));
+\end{lstlisting}
+Tuple-Based constraints also catches data entry errors, but it puts limits to relationship of different attributes inside a tuple. In the following example, the tuple-based constraint rules out successful applications for CS major of Stanford.  
+\begin{lstlisting}
+create table Apply(sID int, cName text, major text, decision text,
+	check(decision = 'N' or cName <> 'Standord' or major <> 'CS'));
+\end{lstlisting}
+Attribute/Tuple based constraints may be syntactically allowed but not enforced in MySQL. Currently sub-queries are allowed in check constraints in no implementation, although they are listed in SQL standard and might be syntactically permitted in certain implementations.  
+\subsection{General Assertion}
+General assertions are very powerful, but unfortunately not supported in any mainstream DBMS. In the SQL standard it takes the form
+\begin{lstlisting}
+--A is unique
+create assertion Key
+check ((select count(distinct A) from T) =
+       (select count(*) from T));
+--Apply only contains sID from Student
+create assertion ReferentialIntegrity
+check (not exists (select * from Apply
+	where sID not in (select sID from Student)));
+--Average GPA of admitted students higher than 3.0
+create assertion AvgAccept
+check (3.0 < (select avg(GPA) from Student 
+	where sID in (select sID from Apply 
+		where decision = 'Y')));
+\end{lstlisting}
+The complexity of implementing general assertion comes from the requirement that it has to be checked each time any modification that can possibly cause violation is made to the DB.
+\subsection{Referential Integrity}
+Referential integrity handles the integrity of references in a database. No ``dangling pointer'' is allowed. In our example, it should be guaranteed that an \texttt{sID} in \texttt{Apply} refers to a student in \texttt{Student}, and that a \texttt{cName} in \texttt{Apply} refers to a college in \texttt{College}, i.e. we have referential integrities \texttt{Apply.sID to Student.sID} and \texttt{Apply.cName to College.cName}, as shown below. Note that referential integrity is a directional constraint. 
+\begin{lstlisting}
+create table Student(sID int primary key, sName text, GPA real, sizeHS int);
+create table College(cName text primary key, state text, enrollment int);
+create table Apply(sID int references Student(sID), 
+				cName text references College(cName),
+				major text, decision text);
+\end{lstlisting}
+
+In a referential integrity \texttt{R.A to S.B}, \texttt{A} is called the \textbf{foreign key}. \texttt{B} is usually required to be the primary key of \texttt{S}, or at least a \texttt{unique} attribute. Multi-attribute foreign key is allowed. 
+
+The enforcement of referential integrity \texttt{R.A to S.B} should consider possible violations by the following operations: 
+\begin{itemize}
+\item insert into \texttt{R};
+\item delete from \texttt{S};
+\item update \texttt{R.A};
+\item update \texttt{S.B}.
+\end{itemize}
+For insertion to \texttt{R} and update of \texttt{R.A}(the referencing table), the referential integrity is simply checked. The referential integrity also prevents us from dropping table \texttt{S}. For deletion from \texttt{S}, three types of actions are possible:
+\begin{description}
+\item[Restrict(default)]Generate an error.
+\item[Set Null]Set referencing tuples in \texttt{R} to have Null value for \texttt{R.A}.
+\item[Cascade]Delete all referencing tuples in \texttt{R}. 
+\end{description}
+Actions for update of \texttt{S.B}(the referenced table) are similar, except that for cascade, the same update is propagated to \texttt{R.A} in \texttt{R}. The actions can be set in the form
+\begin{lstlisting}
+create table Apply(sID int references Student(sID) on delete set null, 
+				cName text references College(cName) on update cascade,
+				major text, decision text);
+\end{lstlisting}
+We can have referential integrities within the same table:
+\begin{lstlisting}
+create table T(A int, B int, C int, D int, primary key(A,B), 
+	foreign key (B,C) references T(A,B) on delete cascade);
+\end{lstlisting}
+\section{SQL for Triggers}
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
