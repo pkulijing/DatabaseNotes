@@ -85,7 +85,7 @@ create table Student(
 Tuple-Based constraints also catches data entry errors, but it puts limits to relationship of different attributes inside a tuple. In the following example, the tuple-based constraint rules out successful applications for CS major of Stanford.  
 \begin{lstlisting}
 create table Apply(sID int, cName text, major text, decision text,
-	check(decision = 'N' or cName <> 'Standord' or major <> 'CS'));
+	check(decision = 'N' or cName <> 'Stanford' or major <> 'CS'));
 \end{lstlisting}
 Attribute/Tuple based constraints may be syntactically allowed but not enforced in MySQL. Currently sub-queries are allowed in check constraints in no implementation, although they are listed in SQL standard and might be syntactically permitted in certain implementations.  
 \subsection{General Assertion}
@@ -143,6 +143,171 @@ create table T(A int, B int, C int, D int, primary key(A,B),
 	foreign key (B,C) references T(A,B) on delete cascade);
 \end{lstlisting}
 \section{SQL for Triggers}
+Implementations of trigger vary significantly across different systems. We will talk about triggers in the SQL standard. The syntax of trigger is as follow.
+\begin{lstlisting}
+Create Trigger name 
+Before | After | Instead of events
+[referencing-variables]
+[For Each Row]
+when (condition)
+action
+\end{lstlisting}
+The trigger should be activated \texttt{before/after/instead of} the \texttt{events} listed in the events clause, which can be insert on table T, delete on table T or update of a few columns(optional) on table T. Each event can involve several tuples. If \texttt{For Each Row} is specified, the trigger is activated for each of these tuples, while the trigger is activated only once if there is no \texttt{For Each Row}. The \texttt{referencing-variables} clause provides a method to access the data whose modification activated the trigger. Old rows, new rows, old tables and new tables can be referenced, with clauses of the form \texttt{old row/new row/old table/new table as var}. Note that \texttt{old/new row} can only be referenced when the event is row-level (its contrary is statement-level), i.e. when \texttt{For Each Row} is enabled. \texttt{condition} and \texttt{action} are self-explaining. 
+
+A simple example is provided below. It implements the referential integrity \texttt{R.A to S.B} with cascaded deletion.
+\begin{lstlisting}
+--row-level
+Create Trigger Cascade
+After Delete On S
+Referencing Old Row as O
+For Each Row
+Delete From R where A = O.B;
+
+--statement-level
+Create Trigger Cascade
+After Delete On S
+Referencing Old Table as OT
+Delete From R where A in (select B from OT);
+\end{lstlisting}
+There are plenty of tricky issues when handling triggers.
+\begin{itemize}
+\item Row-level v.s. statement-level. \texttt{Old/New Row} can only be referenced when the trigger is row-level. The difference is intuitive when the trigger is activated after the event, but it can get trickier when the activation happens before or instead of the event. 
+\item Multiple triggers can be activated at the same time. The order of the activations matters.
+\item The action of one trigger may activate another trigger, causing a chaining effect. A trigger that can activate itself leads to self-triggering, and a few triggers can form a cycle. In both cases, termination of the chain becomes an issue. Moreover, a trigger may take several actions that activates different triggers, resulting in nested invocations of triggers. 
+\item Conditions can be put either in the \texttt{when} clause or as part of the \texttt{action}. Sometimes the efficiency differs a lot among different choices. 
+\end{itemize}
+The following complex example using Table \texttt{T(K,V)} (\texttt{K} is the key) demonstrates the subtlety of row-level v.s. statement-level. Each time an insertion is performed on table \texttt{T}, the trigger checks for each newly inserted tuple whether the average of \texttt{V} in table \texttt{T} is smaller than the average of \texttt{V} in the inserted tuples. If so, then \texttt{V} of the current tuple being processed s incremented by 10.
+\begin{lstlisting}
+Create Trigger IncreaseInserts
+After Insert on T
+Referencing New Row as NR, New Table as NT
+For Each Row
+When (select avg(V) from T) < (select avg(V) from NT)
+Update T set V=V+10 where K=NR.K;
+\end{lstlisting}
+There is no statement-level equivalent to this row-level trigger. Moreover, its final state is nondeterministic because its behavior depends on the order in which the inserted tuples are checked. We will illustrate different aspects of trigger with a few examples using SQLite, which differs from the SQL standard in the following aspects:
+\begin{itemize}
+\item Only row-level trigger is implemented. \texttt{for each row} is implicit if not specified.
+\item Triggers are activated immediately after each row-level change instead of after the whole statement as specified in the standard. As a result, there is no reference to \texttt{old table} or \texttt{new table}. Actually there is no referencing clause. \texttt{Old} and \texttt{New} are predefined for \texttt{Old Row} and \texttt{New Row}.
+\item The \texttt{action} in a trigger is contained in a \texttt{begin-end} block.
+\end{itemize}
+\begin{lstlisting}
+--All newly inserted students with GPA in (3.3,3.6] apply for geology of Stanford and biology of MIT.
+create trigger R1
+after insert on Student
+for each row
+when New.GPA > 3.3 and New.GPA <= 3.6
+begin
+	insert into Apply values(New.sID,'Stanford','geology',null);
+	insert into Apply values(New.sID,'MIT','biology',null);
+end;
+\end{lstlisting}
+\begin{lstlisting}
+--cascade deletion in Student to Apply
+create trigger R2
+after delete on Student
+for each row
+begin
+	delete from Apply where sID = Old.sID;
+end;
+\end{lstlisting}
+\begin{lstlisting}
+--cascade update in College to Apply
+create trigger R3
+after update of cName on College
+for each row
+begin
+	update Apply
+	set cName = New.cName where cName = Old.cName;
+end;
+\end{lstlisting}
+\begin{lstlisting}
+--enforce key constraint on College
+create trigger R4
+before insert on College
+for each row 
+when exists (select * from College where cName = New.cName)
+begin
+	select raise(ignore);--ignore the current modification
+end;
+
+create trigger R5
+before update of cName on College
+for each row 
+when exists (select * from College where cName = New.cName)
+begin
+	select raise(ignore);--ignore the current modification
+end;
+\end{lstlisting}
+\begin{lstlisting}
+--update college name when number of applications > 10
+create trigger R6
+after insert on Apply
+for each row
+when (select count(*) from Apply where cName = New.cName) > 10
+begin
+	update College set cName=cName||'-Done' where cName=New.cName;
+end;
+\end{lstlisting}
+\begin{lstlisting}
+--limit sizeHS
+create trigger R7
+after insert on Student
+for each row
+when New.sizeHS < 100 or New.sizeHS > 5000
+begin
+	delete from Student where sID = New.sID;
+end;
+\end{lstlisting}
+Note that \texttt{R7} and \texttt{R1} can be activated at the same time. If we insert a student with GPA = 3.6 and sizeHS = 10000, the applications generated by \texttt{R1} will stay in Apply, while the tuple inserted into Student will be deleted according to \texttt{R7}.\footnote{\texttt{R2} is not taken into account. }
+\begin{lstlisting}
+--process some applications when enrollment passes threshold of 16000.
+create trigger TooMany
+after update of enrollment on College
+for each row
+when (Old.enrollment <= 16000 and New.enrollment > 16000)
+begin
+	delete from Apply where cName = New.cName and major = 'EE';
+	update Apply
+		set decision = 'U'
+		where cName = New.cName and decision = 'Y';
+end;
+\end{lstlisting}
+\texttt{TooMany} takes action based on the dynamic behavior of the DB, which cannot be done with constraints.
+
+The follow examples use tables \texttt{Ti(A:Int), i = 1,2,3,4}.
+\begin{lstlisting}
+--self-triggering
+creare trigger R1
+after insert on T1
+for each row
+begin
+	insert into T1 values(New.A+1);
+end;
+\end{lstlisting}
+The trigger above will end up in infinite loop if no limit is put on the times for which self-triggering can happen. The parameter \texttt{recursive\_triggers} controls this behavior. By default it is off, and the trigger can be activated at most once. If we turn it on with
+\begin{lstlisting}
+pragma recursive_triggers = on;
+\end{lstlisting}
+the activation can happen multiple times. A limit has to be put in the \texttt{when} clause to avoid infinite loop error. 
+\begin{lstlisting}
+--two triggers are actiavetd at the same time and act on the same data
+create trigger R1
+after insert on T1
+for each row
+begin
+	update T1 set A = 2;
+end;
+
+create trigger R2
+after insert on T1
+for each row
+when exists (select * from T1 where A = 2)
+begin
+	update T1 set A = 3;
+end
+\end{lstlisting}
+The two triggers above are activated at the same time and they both modify the value of \texttt{A}. \texttt{A} may end up with value 2 or 3, depending on the order in which the two triggers are defined.
 \ifx\PREAMBLE\undefined
 \end{document}
 \fi
