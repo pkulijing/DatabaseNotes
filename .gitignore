@@ -11,4 +11,5 @@
 *.toc
 *.xdy
 *.pdf
+!notes.pdf
 *.1
